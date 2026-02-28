@@ -16,6 +16,9 @@ import {
   Legend,
   ReferenceLine,
   LabelList,
+  ScatterChart,
+  Scatter,
+  ZAxis,
 } from 'recharts';
 
 interface Corporation {
@@ -70,6 +73,14 @@ interface DashboardProps {
 
 const COLORS = ['#1e40af', '#0d9488', '#059669', '#7c3aed', '#dc2626'];
 
+const STATUS_COLORS: Record<string, string> = {
+  Active: '#059669',
+  Churned: '#dc2626',
+  Implementation: '#1e40af',
+  Stalled: '#d97706',
+  Offboarding: '#64748b',
+};
+
 export default function Dashboard({ user }: DashboardProps) {
   const [corporations, setCorporations] = useState<Corporation[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -78,6 +89,10 @@ export default function Dashboard({ user }: DashboardProps) {
   const [selectedTaskStatus, setSelectedTaskStatus] = useState<string>('all');
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortColumn, setSortColumn] = useState<
+    'corporation_name' | 'task_status_label' | 'product_mix' | 'total_facilities' | 'facilities_in_dh' | 'penetration_rate'
+  >('penetration_rate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     fetchData();
@@ -97,6 +112,15 @@ export default function Dashboard({ user }: DashboardProps) {
       setError('Failed to load dashboard data. Please refresh the page.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSort = (col: typeof sortColumn) => {
+    if (sortColumn === col) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(col);
+      setSortDirection(col === 'corporation_name' || col === 'task_status_label' || col === 'product_mix' ? 'asc' : 'desc');
     }
   };
 
@@ -126,7 +150,10 @@ export default function Dashboard({ user }: DashboardProps) {
     { name: 'Offboarding', count: stats?.offboarding_status_count || 0 },
   ].filter((item) => item.count > 0);
 
-  const penetrationData = filteredCorporations
+  // GTM priority: lowest-penetration active + implementation accounts (uses all corps, ignores filters)
+  const penetrationData = corporations
+    .filter((c) => c.task_status_label === 'Active' || c.task_status_label === 'Implementation')
+    .sort((a, b) => (a.penetration_rate || 0) - (b.penetration_rate || 0))
     .slice(0, 10)
     .map((corp) => ({
       name: corp.corporation_name.length > 20
@@ -163,6 +190,77 @@ export default function Dashboard({ user }: DashboardProps) {
       unmatched: (stats?.churned_facilities || 0) - (stats?.churned_facilities_in_dh || 0),
     },
   ].filter((d) => d.matched + d.unmatched > 0);
+
+  const weightedPenetration =
+    stats && stats.total_facilities > 0
+      ? Math.round((stats.total_facilities_in_dh / stats.total_facilities) * 100)
+      : 0;
+
+  // GTM tier metrics — scoped to Active accounts only, unaffected by table filters
+  const activeCorps = corporations.filter((c) => c.task_status_label === 'Active');
+  const tierBelow50 = activeCorps.filter((c) => (c.penetration_rate || 0) < 0.5);
+  const tierMid = activeCorps.filter((c) => (c.penetration_rate || 0) >= 0.5 && (c.penetration_rate || 0) < 0.8);
+  const tierAbove80 = activeCorps.filter((c) => (c.penetration_rate || 0) >= 0.8);
+  const facilitiesBelow50 = tierBelow50.reduce((s, c) => s + (c.total_facilities || 0), 0);
+  const facilitiesMid = tierMid.reduce((s, c) => s + (c.total_facilities || 0), 0);
+  const facilitiesAbove80 = tierAbove80.reduce((s, c) => s + (c.total_facilities || 0), 0);
+  const expansionOpportunity = activeCorps.reduce((sum, corp) => {
+    const target = Math.floor((corp.total_facilities || 0) * 0.8);
+    return sum + Math.max(0, target - (corp.facilities_in_dh || 0));
+  }, 0);
+
+  // Product depth vs. penetration — does more products → higher wallet share?
+  const productDepthData = [1, 2, 3]
+    .map((count) => {
+      const corps = activeCorps.filter((c) => {
+        const n =
+          (c.product_mix.includes('Flow') ? 1 : 0) +
+          (c.product_mix.includes('View') ? 1 : 0) +
+          (c.product_mix.includes('Sync') ? 1 : 0);
+        return n === count;
+      });
+      const avg =
+        corps.length > 0
+          ? corps.reduce((s, c) => s + (c.penetration_rate || 0), 0) / corps.length
+          : 0;
+      return {
+        products: count === 1 ? '1 Product' : count === 2 ? '2 Products' : '3 Products',
+        penetration: Math.round(avg * 100),
+        count: corps.length,
+      };
+    })
+    .filter((d) => d.count > 0);
+
+  const scatterData = filteredCorporations.map((corp) => ({
+    name: corp.corporation_name,
+    won: corp.facilities_in_dh || 0,
+    remaining: Math.max(0, (corp.total_facilities || 0) - (corp.facilities_in_dh || 0)),
+    total: corp.total_facilities || 0,
+    status: corp.task_status_label,
+  }));
+
+  const wonMedian = (() => {
+    const vals = scatterData.map((d) => d.won).sort((a, b) => a - b);
+    return vals[Math.floor(vals.length / 2)] ?? 0;
+  })();
+
+  const remainingMedian = (() => {
+    const vals = scatterData.map((d) => d.remaining).sort((a, b) => a - b);
+    return vals[Math.floor(vals.length / 2)] ?? 0;
+  })();
+
+  const sortedCorporations = [...filteredCorporations].sort((a, b) => {
+    const aVal = a[sortColumn];
+    const bVal = b[sortColumn];
+    const dir = sortDirection === 'asc' ? 1 : -1;
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+    if (typeof aVal === 'number' && typeof bVal === 'number') return (aVal - bVal) * dir;
+    return String(aVal).localeCompare(String(bVal)) * dir;
+  });
+
+  const sortIcon = (col: typeof sortColumn) =>
+    sortColumn === col ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ' ↕';
 
   const dataFreshness = stats?.data_loaded_at
     ? (() => {
@@ -253,10 +351,11 @@ export default function Dashboard({ user }: DashboardProps) {
               </p>
             </div>
             <div className="card border-l-4 border-l-covr-blue">
-              <p className="text-sm text-gray-600 mb-1">Avg Penetration</p>
+              <p className="text-sm text-gray-600 mb-1">Weighted Penetration</p>
               <p className="text-3xl font-bold text-covr-blue font-mono tabular-nums">
-                {Math.round((stats.avg_penetration_rate || 0) * 100)}%
+                {weightedPenetration}%
               </p>
+              <p className="text-xs text-gray-400 mt-1">by facility count</p>
             </div>
             <div className="card border-l-4 border-l-gray-400">
               <p className="text-sm text-gray-600 mb-1">Total Facilities</p>
@@ -269,6 +368,40 @@ export default function Dashboard({ user }: DashboardProps) {
               <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">
                 {stats.total_facilities_in_dh?.toLocaleString() || 0}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* GTM Penetration Tiers — Active accounts only */}
+        {corporations.length > 0 && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white rounded-lg shadow-md p-5 border-l-4 border-l-red-500">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Below 50% — Active</p>
+              <p className="text-2xl font-bold text-red-600 font-mono tabular-nums">
+                {tierBelow50.length}<span className="text-sm font-normal text-gray-400 ml-1">corps</span>
+              </p>
+              <p className="text-sm text-gray-500 font-mono mt-1">{facilitiesBelow50.toLocaleString()} facilities</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-5 border-l-4 border-l-amber-500">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">50–79% — Active</p>
+              <p className="text-2xl font-bold text-amber-600 font-mono tabular-nums">
+                {tierMid.length}<span className="text-sm font-normal text-gray-400 ml-1">corps</span>
+              </p>
+              <p className="text-sm text-gray-500 font-mono mt-1">{facilitiesMid.toLocaleString()} facilities</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-5 border-l-4 border-l-green-500">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">≥ 80% — Active</p>
+              <p className="text-2xl font-bold text-green-600 font-mono tabular-nums">
+                {tierAbove80.length}<span className="text-sm font-normal text-gray-400 ml-1">corps</span>
+              </p>
+              <p className="text-sm text-gray-500 font-mono mt-1">{facilitiesAbove80.toLocaleString()} facilities</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-5 border-l-4 border-l-orange-400">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Expansion to 80%</p>
+              <p className="text-2xl font-bold text-orange-600 font-mono tabular-nums">
+                {expansionOpportunity.toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">facilities gap in active accounts</p>
             </div>
           </div>
         )}
@@ -321,16 +454,65 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
 
+        {/* Product Depth vs. Penetration */}
+        {productDepthData.length > 0 && (
+          <div className="card mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              Product Depth vs. Facility Penetration
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Average facility penetration rate by number of Covr products — Active accounts only. Tests whether broader product adoption correlates with deeper wallet share.
+            </p>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={productDepthData} barSize={80}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="products" tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 13 }} />
+                <YAxis
+                  domain={[0, 100]}
+                  tickFormatter={(v) => `${v}%`}
+                  tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                />
+                <Tooltip
+                  formatter={(value) => [`${value}%`, 'Avg Penetration']}
+                  content={(props) => {
+                    if (!props.active || !props.payload?.length) return null;
+                    const d = props.payload[0].payload as { products: string; penetration: number; count: number };
+                    return (
+                      <div className="bg-white border border-gray-200 rounded shadow-lg p-3 text-sm">
+                        <p className="font-semibold text-gray-900 mb-1">{d.products}</p>
+                        <p className="text-gray-600">Avg penetration: <span className="font-mono font-medium">{d.penetration}%</span></p>
+                        <p className="text-gray-500 text-xs mt-1">{d.count} active accounts</p>
+                      </div>
+                    );
+                  }}
+                />
+                <ReferenceLine y={80} stroke="#dc2626" strokeDasharray="4 4" label={{ value: '80% target', position: 'right', fill: '#dc2626', fontSize: 11 }} />
+                <Bar dataKey="penetration" fill="#1e40af" radius={[4, 4, 0, 0]}>
+                  <LabelList
+                    dataKey="penetration"
+                    position="top"
+                    formatter={(v: number) => `${v}%`}
+                    style={{ fontFamily: 'var(--font-fira-code)', fontSize: 13, fill: '#374151', fontWeight: 600 }}
+                  />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
         {/* Penetration Chart */}
         <div className="card mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Top 10 Corporations by Penetration Rate
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+            GTM Priority — Lowest Penetration (Active &amp; In Implementation)
           </h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Accounts furthest from the 80% target — always shows all active/implementation corps regardless of filters
+          </p>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={penetrationData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-              <YAxis dataKey="name" type="category" width={150} />
+              <YAxis dataKey="name" type="category" width={160} tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }} />
               <Tooltip
                 formatter={(value, name) => {
                   if (name === 'penetration') return [`${value}%`, 'Penetration'];
@@ -338,7 +520,14 @@ export default function Dashboard({ user }: DashboardProps) {
                 }}
               />
               <ReferenceLine x={80} stroke="#dc2626" strokeDasharray="4 4" label={{ value: '80% target', position: 'top', fill: '#dc2626', fontSize: 11 }} />
-              <Bar dataKey="penetration" fill="#059669" />
+              <Bar dataKey="penetration">
+                {penetrationData.map((entry, i) => (
+                  <Cell
+                    key={i}
+                    fill={entry.penetration >= 80 ? '#059669' : entry.penetration >= 50 ? '#d97706' : '#dc2626'}
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -371,6 +560,82 @@ export default function Dashboard({ user }: DashboardProps) {
               <Bar dataKey="unmatched" stackId="a" fill="#e5e7eb" />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* Opportunity Matrix */}
+        <div className="card mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+            Opportunity Matrix
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Each dot is a corporation, sized by total facilities. Dashed lines show medians. &nbsp;
+            <span className="text-gray-400">Top-right: large accounts with upside · Bottom-right: mature/saturated · Top-left: growth targets · Bottom-left: small accounts</span>
+          </p>
+          <ResponsiveContainer width="100%" height={420}>
+            <ScatterChart margin={{ top: 20, right: 80, bottom: 50, left: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                type="number"
+                dataKey="won"
+                name="Facilities Won"
+                label={{ value: 'Facilities Won (Customers)', position: 'insideBottom', offset: -15, style: { fill: '#6b7280', fontSize: 12 } }}
+                tickFormatter={(v: number) => v.toLocaleString()}
+                tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+              />
+              <YAxis
+                type="number"
+                dataKey="remaining"
+                name="Facilities Remaining"
+                label={{ value: 'Facilities Not Yet Won', angle: -90, position: 'insideLeft', offset: 15, style: { fill: '#6b7280', fontSize: 12 } }}
+                tickFormatter={(v: number) => v.toLocaleString()}
+                tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+              />
+              <ZAxis type="number" dataKey="total" range={[40, 500]} name="Total Facilities" />
+              <Tooltip
+                cursor={{ strokeDasharray: '3 3' }}
+                content={(props) => {
+                  if (!props.active || !props.payload?.length) return null;
+                  const d = props.payload[0].payload as {
+                    name: string; won: number; remaining: number; total: number; status: string;
+                  };
+                  return (
+                    <div className="bg-white border border-gray-200 rounded shadow-lg p-3 text-sm max-w-xs">
+                      <p className="font-semibold text-gray-900 mb-1">{d.name}</p>
+                      <p className="text-gray-600">Won: <span className="font-mono font-medium">{d.won.toLocaleString()}</span></p>
+                      <p className="text-gray-600">Remaining: <span className="font-mono font-medium">{d.remaining.toLocaleString()}</span></p>
+                      <p className="text-gray-600">Total: <span className="font-mono font-medium">{d.total.toLocaleString()}</span></p>
+                      <p className="text-xs text-gray-400 mt-1">{d.status}</p>
+                    </div>
+                  );
+                }}
+              />
+              <ReferenceLine
+                x={wonMedian}
+                stroke="#9ca3af"
+                strokeDasharray="5 3"
+                label={{ value: `median (${wonMedian.toLocaleString()})`, position: 'top', fontSize: 10, fill: '#9ca3af' }}
+              />
+              <ReferenceLine
+                y={remainingMedian}
+                stroke="#9ca3af"
+                strokeDasharray="5 3"
+                label={{ value: `median (${remainingMedian.toLocaleString()})`, position: 'insideBottomRight', fontSize: 10, fill: '#9ca3af' }}
+              />
+              <Scatter data={scatterData} fillOpacity={0.75}>
+                {scatterData.map((entry, i) => (
+                  <Cell key={i} fill={STATUS_COLORS[entry.status] || '#64748b'} />
+                ))}
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 mt-3 justify-center">
+            {Object.entries(STATUS_COLORS).map(([label, color]) => (
+              <span key={label} className="flex items-center gap-1.5 text-xs text-gray-600">
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                {label}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Filters */}
@@ -432,28 +697,46 @@ export default function Dashboard({ user }: DashboardProps) {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Corporation
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => handleSort('corporation_name')}
+                  >
+                    Corporation{sortIcon('corporation_name')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => handleSort('task_status_label')}
+                  >
+                    Status{sortIcon('task_status_label')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Product Mix
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => handleSort('product_mix')}
+                  >
+                    Product Mix{sortIcon('product_mix')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Facilities
+                  <th
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => handleSort('total_facilities')}
+                  >
+                    Facilities{sortIcon('total_facilities')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Definitive Healthcare
+                  <th
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => handleSort('facilities_in_dh')}
+                  >
+                    Definitive Healthcare{sortIcon('facilities_in_dh')}
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Penetration
+                  <th
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => handleSort('penetration_rate')}
+                  >
+                    Penetration{sortIcon('penetration_rate')}
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredCorporations.map((corp) => (
+                {sortedCorporations.map((corp) => (
                   <tr key={corp.clickup_task_id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
