@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { getCorporationsData, getSummaryStats } from '@/lib/bigquery';
+import { authOptions } from '@/lib/auth';
+
+export const revalidate = 3600; // re-fetch from BigQuery at most once per hour
 
 export async function GET() {
   try {
     // Check authentication
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,7 +20,9 @@ export async function GET() {
       getSummaryStats(),
     ]);
 
-    return NextResponse.json({ corporations, stats });
+    return NextResponse.json({ corporations, stats }, {
+      headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=3600' },
+    });
   } catch (error) {
     console.error('Error fetching corporations:', error);
     return NextResponse.json(

@@ -7,6 +7,10 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-fira-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-fira-code)', 'ui-monospace', 'monospace'],
+      },
       colors: {
         'covr-blue': '#1e40af',
         'covr-teal': '#0d9488',

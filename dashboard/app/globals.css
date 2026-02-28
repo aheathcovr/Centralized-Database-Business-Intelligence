@@ -24,11 +24,11 @@ body {
   }
   
   .btn-primary {
-    @apply bg-covr-blue hover:bg-blue-800 text-white font-medium py-2 px-4 rounded transition-colors;
+    @apply bg-covr-blue hover:bg-blue-800 text-white font-medium py-2 px-4 rounded transition-colors duration-150 cursor-pointer;
   }
-  
+
   .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition-colors;
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition-colors duration-150 cursor-pointer;
   }
   
   .filter-select {

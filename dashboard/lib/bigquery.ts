@@ -9,22 +9,19 @@ export interface CorporationData {
   corporation_name: string;
   task_status: string;
   task_status_label: string;
-  customer_status: string;
   customer_type_label: string | null;
   customer_type_value: string | null;
   hubspot_url: string | null;
   hubspot_company_id: string | null;
-  total_child_facilities: number | null;
-  facilities_with_clickup: number | null;
-  penetration_rate: number | null;
-  associated_companies_count: number;
+  total_facilities: number;
+  facilities_in_dh: number;
+  facilities_matched: number;
+  penetration_rate: number;
   product_mix: string;
   has_flow: boolean;
   has_view: boolean;
   has_sync: boolean;
   total_facilities_override: number | null;
-  org_code_json: string | null;
-  services_json: string | null;
   billing_stop_date: string | null;
   go_live_date: string | null;
   onboarding_start_date: string | null;
@@ -62,22 +59,19 @@ export async function getCorporationsData(): Promise<CorporationData[]> {
       corporation_name,
       task_status,
       task_status_label,
-      customer_status,
       customer_type_label,
       customer_type_value,
       hubspot_url,
       hubspot_company_id,
-      total_child_facilities,
-      facilities_with_clickup,
+      total_facilities,
+      facilities_in_dh,
+      facilities_matched,
       penetration_rate,
-      associated_companies_count,
       product_mix,
       has_flow,
       has_view,
       has_sync,
       total_facilities_override,
-      org_code_json,
-      services_json,
       billing_stop_date,
       go_live_date,
       onboarding_start_date,
@@ -99,22 +93,19 @@ export async function getCorporationById(clickupTaskId: string): Promise<Corpora
       corporation_name,
       task_status,
       task_status_label,
-      customer_status,
       customer_type_label,
       customer_type_value,
       hubspot_url,
       hubspot_company_id,
-      total_child_facilities,
-      facilities_with_clickup,
+      total_facilities,
+      facilities_in_dh,
+      facilities_matched,
       penetration_rate,
-      associated_companies_count,
       product_mix,
       has_flow,
       has_view,
       has_sync,
       total_facilities_override,
-      org_code_json,
-      services_json,
       billing_stop_date,
       go_live_date,
       onboarding_start_date,
@@ -206,15 +197,24 @@ export async function getSummaryStats() {
       COUNTIF(task_status_label = 'Implementation') as implementation_status_count,
       COUNTIF(task_status_label = 'Stalled') as stalled_status_count,
       COUNTIF(task_status_label = 'Offboarding') as offboarding_status_count,
-      COUNTIF(customer_type_label = 'Active') as active_customer_type,
-      COUNTIF(customer_type_label = 'Churned') as churned_customer_type,
-      COUNTIF(customer_type_label = 'No Start') as no_start_customer_type,
       COUNTIF(product_mix LIKE '%Flow%') as flow_customers,
       COUNTIF(product_mix LIKE '%View%') as view_customers,
       COUNTIF(product_mix LIKE '%Sync%') as sync_customers,
       AVG(penetration_rate) as avg_penetration_rate,
-      SUM(total_child_facilities) as total_facilities,
-      SUM(facilities_with_clickup) as total_active_facilities
+      SUM(total_facilities) as total_facilities,
+      SUM(facilities_in_dh) as total_facilities_in_dh,
+      -- Facility counts broken down by corporation status
+      SUM(IF(task_status_label = 'Active', total_facilities, 0)) as active_facilities,
+      SUM(IF(task_status_label = 'Active', facilities_in_dh, 0)) as active_facilities_in_dh,
+      SUM(IF(task_status_label = 'Churned', total_facilities, 0)) as churned_facilities,
+      SUM(IF(task_status_label = 'Churned', facilities_in_dh, 0)) as churned_facilities_in_dh,
+      SUM(IF(task_status_label = 'Implementation', total_facilities, 0)) as implementation_facilities,
+      SUM(IF(task_status_label = 'Implementation', facilities_in_dh, 0)) as implementation_facilities_in_dh,
+      SUM(IF(task_status_label = 'Stalled', total_facilities, 0)) as stalled_facilities,
+      SUM(IF(task_status_label = 'Stalled', facilities_in_dh, 0)) as stalled_facilities_in_dh,
+      SUM(IF(task_status_label = 'Offboarding', total_facilities, 0)) as offboarding_facilities,
+      SUM(IF(task_status_label = 'Offboarding', facilities_in_dh, 0)) as offboarding_facilities_in_dh,
+      MAX(_loaded_at) as data_loaded_at
     FROM \`gen-lang-client-0844868008.revops_analytics.corp_penetration_view\`
   `;
 
@@ -227,24 +227,34 @@ export async function getFilteredCorporations(filters: {
   taskStatus?: string;
   customerType?: string;
   productMix?: string;
-  hasServices?: boolean;
+  minPenetration?: number;
+  maxPenetration?: number;
 }): Promise<CorporationData[]> {
-  let whereConditions: string[] = [];
-  
+  const whereConditions: string[] = [];
+  const params: Record<string, string | number> = {};
+
   if (filters.taskStatus) {
-    whereConditions.push(`task_status_label = '${filters.taskStatus}'`);
+    whereConditions.push(`task_status_label = @taskStatus`);
+    params.taskStatus = filters.taskStatus;
   }
   if (filters.customerType) {
-    whereConditions.push(`customer_type_label = '${filters.customerType}'`);
+    whereConditions.push(`customer_type_label = @customerType`);
+    params.customerType = filters.customerType;
   }
   if (filters.productMix) {
-    whereConditions.push(`product_mix LIKE '%${filters.productMix}%'`);
+    whereConditions.push(`product_mix LIKE @productMix`);
+    params.productMix = `%${filters.productMix}%`;
   }
-  if (filters.hasServices) {
-    whereConditions.push(`services_json IS NOT NULL`);
+  if (filters.minPenetration !== undefined) {
+    whereConditions.push(`penetration_rate >= @minPenetration`);
+    params.minPenetration = filters.minPenetration;
   }
-  
-  const whereClause = whereConditions.length > 0 
+  if (filters.maxPenetration !== undefined) {
+    whereConditions.push(`penetration_rate <= @maxPenetration`);
+    params.maxPenetration = filters.maxPenetration;
+  }
+
+  const whereClause = whereConditions.length > 0
     ? 'WHERE ' + whereConditions.join(' AND ')
     : '';
 
@@ -254,17 +264,15 @@ export async function getFilteredCorporations(filters: {
       corporation_name,
       task_status,
       task_status_label,
-      customer_status,
       customer_type_label,
       hubspot_url,
       hubspot_company_id,
-      total_child_facilities,
-      facilities_with_clickup,
+      total_facilities,
+      facilities_in_dh,
+      facilities_matched,
       penetration_rate,
-      associated_companies_count,
       product_mix,
       total_facilities_override,
-      org_code_json,
       billing_stop_date,
       go_live_date,
       _loaded_at
@@ -273,6 +281,6 @@ export async function getFilteredCorporations(filters: {
     ORDER BY penetration_rate DESC, corporation_name
   `;
 
-  const [rows] = await bigquery.query({ query });
+  const [rows] = await bigquery.query({ query, params });
   return rows as CorporationData[];
 }
