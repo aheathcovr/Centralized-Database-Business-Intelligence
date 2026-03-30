@@ -20,6 +20,8 @@ import {
   Scatter,
   ZAxis,
 } from 'recharts';
+import { DateRangePicker, SalesRepFilter } from './filters';
+import type { DateRange, SalesRepFilterValue } from './filters';
 
 interface Corporation {
   clickup_task_id: string;
@@ -89,6 +91,8 @@ export default function Dashboard({ user }: DashboardProps) {
   const [selectedTaskStatus, setSelectedTaskStatus] = useState<string>('all');
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange | null>(null);
+  const [salesRepFilter, setSalesRepFilter] = useState<SalesRepFilterValue>({ reps: [], groups: [] });
   const [sortColumn, setSortColumn] = useState<
     'corporation_name' | 'task_status_label' | 'product_mix' | 'total_facilities' | 'facilities_in_dh' | 'penetration_rate'
   >('penetration_rate');
@@ -640,7 +644,15 @@ export default function Dashboard({ user }: DashboardProps) {
 
         {/* Filters */}
         <div className="card mb-6">
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <DateRangePicker
+              value={dateRange}
+              onChange={setDateRange}
+            />
+            <SalesRepFilter
+              value={salesRepFilter}
+              onChange={setSalesRepFilter}
+            />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Task Status
@@ -648,7 +660,7 @@ export default function Dashboard({ user }: DashboardProps) {
               <select
                 value={selectedTaskStatus}
                 onChange={(e) => setSelectedTaskStatus(e.target.value)}
-                className="filter-select"
+                className="filter-select w-full"
               >
                 <option value="all">All Task Statuses</option>
                 <option value="Active">Active</option>
@@ -665,7 +677,7 @@ export default function Dashboard({ user }: DashboardProps) {
               <select
                 value={selectedProduct}
                 onChange={(e) => setSelectedProduct(e.target.value)}
-                className="filter-select"
+                className="filter-select w-full"
               >
                 <option value="all">All Products</option>
                 <option value="Flow">Flow</option>
@@ -673,6 +685,8 @@ export default function Dashboard({ user }: DashboardProps) {
                 <option value="Sync">Sync</option>
               </select>
             </div>
+          </div>
+          <div className="flex gap-4">
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Search
@@ -685,6 +699,23 @@ export default function Dashboard({ user }: DashboardProps) {
                 className="filter-select w-full"
               />
             </div>
+            {(dateRange || salesRepFilter.reps.length > 0 || salesRepFilter.groups.length > 0) && (
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDateRange(null);
+                    setSalesRepFilter({ reps: [], groups: [] });
+                    setSelectedTaskStatus('all');
+                    setSelectedProduct('all');
+                    setSearchQuery('');
+                  }}
+                  className="btn-secondary text-xs py-2"
+                >
+                  Reset All Filters
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
