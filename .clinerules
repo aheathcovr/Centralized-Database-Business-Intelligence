@@ -1,0 +1,112 @@
+# Cline Rules — Centralized Database Business Intelligence
+# Project: Covr Data Warehouse & BI Platform
+# Workspace: /Users/austinheath/.cline/worktrees/1509f/Centralized Database Business Intelligence
+# Remote: origin -> https://github.com/aheathcovr/Centralized-Database-Business-Intelligence.git
+
+## Project Overview
+# This repository contains BigQuery SQL view definitions and supporting documentation
+# for the Covr centralized data warehouse. There is no application code — all logic
+# lives in BigQuery views and Looker Studio dashboards.
+#
+# Source systems: HubSpot (Fivetran/Airbyte), Intercom, ClickUp, SSO, DataHouse
+# Target: Google BigQuery project gen-lang-client-0844868008
+# Dataset: revops_analytics
+#
+# Deployment: Run SQL scripts directly in BigQuery Console or via `bq` CLI.
+
+## Repository Structure
+.
+├── bigquery/
+│   ├── corp_penetration_view.sql
+│   ├── in_month_conversion.sql
+│   ├── revops_in_month_conversion.sql
+│   ├── intercom_weekly_support_metrics.sql
+│   └── (future views follow same pattern)
+├── QUICKSTART.md
+├── NEXT_STEPS.md
+├── TIMELINE_FEATURE.md
+├── ENVIRONMENT-SETUP.md
+├── GITLAB-SETUP.md
+├── PROJECT-STATUS.md
+└── (other planning and config docs)
+
+## File Conventions
+- SQL files: snake_case with descriptive names (e.g., in_month_conversion.sql)
+- Planning docs: UPPER_SNAKE_CASE.md (e.g., QUICKSTART.md, NEXT_STEPS.md)
+- Configuration: lowercase with dashes (e.g., .gitlab-ci.yml)
+- All SQL files go in bigquery/ directory
+- All planning docs go in root
+
+## BigQuery SQL Style Guide
+- Always use CREATE OR REPLACE VIEW for idempotent deployment
+- Fully-qualified table names: \`gen-lang-client-0844868008.dataset.table\`
+- Use CTEs (WITH clauses) for readable, modular query logic
+- One CTE per logical transformation step
+- Comment every CTE with its purpose and data flow
+- Use ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...) for deduplication
+- Use COALESCE() for null handling in joins and aggregations
+- Use SAFE_DIVIDE() to prevent divide-by-zero errors
+- Use SAFE.PARSE_TIMESTAMP() for flexible timestamp parsing
+- Lowercase all identifiers (table names, column names, aliases)
+- Uppercase SQL keywords (SELECT, FROM, WHERE, JOIN, etc.)
+- Use meaningful column aliases with units (e.g., expected_arr, won_count, pct_lost)
+
+## BigQuery Naming Conventions
+- Views: snake_case (e.g., corp_penetration_view, in_month_conversion)
+- Columns: snake_case with suffix indicating type (_count, _arr, _pct, _rate)
+- CTEs: descriptive snake_case (e.g., deal_base, som_snapshot, combined_metrics)
+- Temporal columns: _start, _end, _at suffixes (e.g., month_start, snapshot_ts)
+- Boolean columns: was_, is_, has_ prefix (e.g., was_open_start_of_month, is_expected)
+
+## Section Comment Pattern
+Every SQL file should use this comment structure:
+-- ============================================================
+-- SECTION N: Title
+-- ============================================================
+-- Description of what this section does
+
+## Dataset Reference
+- Project ID: gen-lang-client-0844868008
+- Analytics dataset: revops_analytics
+- Source datasets: hubspot, HubSpot_Airbyte, clickup, intercom, sso, datahouse
+- Always use fully-qualified names in view definitions
+
+## Planning Document Conventions
+- Markdown format with clear H1/H2/H3 hierarchy
+- Use task lists with [ ] and [x] checkboxes for tracking
+- Include code blocks with SQL syntax highlighting
+- Reference specific files by path (e.g., bigquery/corp_penetration_view.sql)
+- Include status indicators: ✅ Complete, 🔄 In Progress, ⬜ Not Started, ❌ Blocked
+
+## Deployment Process
+1. Write SQL in bigquery/ directory
+2. Test in BigQuery Console SQL workspace
+3. Validate output schema and row counts
+4. Deploy via `bq query --use_legacy_sql=false < file.sql`
+5. Verify in Looker Studio data source
+6. Commit SQL file and update planning docs
+
+## Common Patterns
+
+### Date Range Generation
+FROM UNNEST(GENERATE_DATE_ARRAY(start_date, end_date, INTERVAL 1 MONTH)) AS month_date
+
+### Month Label Formatting
+FORMAT_DATE('%b-%y', month_start) AS month_label
+
+### Pipeline Snapshot Logic
+Find latest property value before a cutoff timestamp using:
+ROW_NUMBER() OVER (PARTITION BY deal_id, month_start ORDER BY timestamp DESC) AS rn
+... WHERE rn = 1
+
+### Safe Percentage Calculation
+ROUND(SAFE_DIVIDE(numerator, NULLIF(denominator, 0)) * 100, 1) AS pct_column
+
+### ARR Handling
+COALESCE(property_hs_arr, property_amount, 0) AS current_arr
+
+## Current View Inventory
+1. corp_penetration_view — Corporation/facility penetration analytics
+2. in_month_conversion — In-month deal conversion (Airbyte source, per-deal detail)
+3. revops_in_month_conversion — In-month deal conversion (Fivetran source, aggregated)
+4. intercom_weekly_support_metrics — Weekly support volume by admin
