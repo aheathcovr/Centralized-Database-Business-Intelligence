@@ -333,79 +333,69 @@ export async function getSupportMetrics(params?: {
   return rows as SupportMetrics[];
 }
 
-// ============================================================
-// In-Month Conversion data
-// ============================================================
-export interface InMonthConversionData {
+// In-Month Conversion data from revops_analytics.in_month_conversion view
+export interface InMonthConversionRow {
   month_start: string;
   month_label: string;
   year: number;
   month_number: number;
-  // Entering pipeline
   entering_expected: number;
   entering_later_month: number;
   entering_total: number;
-  // Outcomes (from Expected entering deals)
   won_from_expected: number;
   lost_from_expected: number;
   pushed_from_expected: number;
-  // Outcomes (all entering deals)
   won_total: number;
   lost_total: number;
   pushed_total: number;
   no_change_total: number;
-  // Core metric & ratios
   in_month_conversion_pct: number | null;
   win_rate_pct: number | null;
   loss_rate_pct: number | null;
   push_rate_pct: number | null;
   realized_rate_pct: number | null;
-  // Dollar amounts
   won_amount_expected: number;
   entering_amount_expected: number;
   lost_amount_expected: number;
   pushed_amount_expected: number;
   dollar_conversion_pct: number | null;
-  // Pipeline health
   pushed_expected_to_expected: number;
   pushed_expected_to_later: number;
   _loaded_at: string;
 }
 
-export async function getInMonthConversionData(): Promise<InMonthConversionData[]> {
+export async function getInMonthConversion(params?: {
+  start_month?: string;
+  end_month?: string;
+  deal_owner_id?: string;
+}): Promise<InMonthConversionRow[]> {
+  const whereConditions: string[] = [];
+  const queryParams: Record<string, string> = {};
+
+  if (params?.start_month) {
+    whereConditions.push('month_start >= @start_month');
+    queryParams.start_month = params.start_month;
+  }
+  if (params?.end_month) {
+    whereConditions.push('month_start <= @end_month');
+    queryParams.end_month = params.end_month;
+  }
+  if (params?.deal_owner_id) {
+    whereConditions.push('deal_owner_id = @deal_owner_id');
+    queryParams.deal_owner_id = params.deal_owner_id;
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
+
   const query = `
-    SELECT
-      month_start,
-      month_label,
-      year,
-      month_number,
-      entering_expected,
-      entering_later_month,
-      entering_total,
-      won_from_expected,
-      lost_from_expected,
-      pushed_from_expected,
-      won_total,
-      lost_total,
-      pushed_total,
-      no_change_total,
-      in_month_conversion_pct,
-      win_rate_pct,
-      loss_rate_pct,
-      push_rate_pct,
-      realized_rate_pct,
-      won_amount_expected,
-      entering_amount_expected,
-      lost_amount_expected,
-      pushed_amount_expected,
-      dollar_conversion_pct,
-      pushed_expected_to_expected,
-      pushed_expected_to_later,
-      _loaded_at
+    SELECT *
     FROM \`gen-lang-client-0844868008.revops_analytics.in_month_conversion\`
-    ORDER BY month_start
+    ${whereClause}
+    ORDER BY month_start ASC
   `;
 
-  const [rows] = await bigquery.query({ query });
-  return rows as InMonthConversionData[];
+  const [rows] = await bigquery.query({ query, params: queryParams });
+  return rows as InMonthConversionRow[];
 }
