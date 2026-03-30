@@ -1,6 +1,7 @@
 'use client';
 
 import { signOut } from 'next-auth/react';
+import ViewToggle from './ViewToggle';
 
 interface DashboardHeaderProps {
   user: {
@@ -18,6 +19,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
           <div className="w-8 h-8 bg-covr-blue rounded-lg flex items-center justify-center lg:hidden">
             <span className="text-white font-bold text-sm">C</span>
           </div>
+          <ViewToggle />
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
