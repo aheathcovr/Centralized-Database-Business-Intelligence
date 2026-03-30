@@ -284,3 +284,51 @@ export async function getFilteredCorporations(filters: {
   const [rows] = await bigquery.query({ query, params });
   return rows as CorporationData[];
 }
+// Intercom weekly support metrics
+export interface SupportMetrics {
+  week_start: string;
+  year_week: string;
+  new_tickets: number;
+  closed_tickets: number;
+  csat_positive: number;
+  csat_negative: number;
+  csat_total: number;
+  csat_score_pct: number | null;
+  first_response_avg_seconds: number | null;
+  first_response_median_seconds: number | null;
+  first_response_avg_minutes: number | null;
+  first_response_median_minutes: number | null;
+  first_response_avg_hours: number | null;
+  first_response_median_hours: number | null;
+}
+
+export async function getSupportMetrics(params?: {
+  start_week?: string;
+  end_week?: string;
+}): Promise<SupportMetrics[]> {
+  const whereConditions: string[] = [];
+  const queryParams: Record<string, string> = {};
+
+  if (params?.start_week) {
+    whereConditions.push('week_start >= @start_week');
+    queryParams.start_week = params.start_week;
+  }
+  if (params?.end_week) {
+    whereConditions.push('week_start <= @end_week');
+    queryParams.end_week = params.end_week;
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
+
+  const query = `
+    SELECT *
+    FROM \`gen-lang-client-0844868008.revops_analytics.intercom_weekly_support_metrics\`
+    ${whereClause}
+    ORDER BY week_start DESC
+  `;
+
+  const [rows] = await bigquery.query({ query, params: queryParams });
+  return rows as SupportMetrics[];
+}
