@@ -1,0 +1,402 @@
+# Covr Data Warehouse & BI Platform — Project Proposal
+
+**Owner:** Austin**Contributors:** Andrew (×2), Felippe, Will, Kyle, Tanner, Christina (as customers); Jeff / Jim (Engineering)**Project Tracking:** [ClickUp — Data Warehouse Project](https://app.clickup.com/t/86aedfa1n)**Reporting Channel:** `#proj_data_warehouse` (weekly updates)**Prepared:** February 2026
+
+---
+
+Andrew, Jim, jeff (optional) reviewers
+
+
+
+prioritize across groups one to two reports that need to be built
+
+- timeline
+
+POC
+
+- three to four reports that could be built that touch the most sources
+
+
+
+in scope/ out of scope visualizations
+
+
+
+
+
+## 1. Executive Summary
+
+Covr's growth in customers, personnel, and systems has created a critical need for a single, authoritative source of business truth. Today, data is distributed across six distinct platforms — each managed independently, with limited cross-system visibility. This fragmentation makes it difficult for any team to answer even basic cross-functional questions, such as: *Which customers are at churn risk and also have open invoices?* or *What is the NRR for customers who adopted Flow in their first 90 days?*
+
+This proposal defines the architecture, scope, and execution plan for Covr's first centralized **Data Warehouse and Business Intelligence (BI) Platform**, built on **Google BigQuery** and **Google Looker**. The initiative is organized around a single core concept — the **Customer Cube** — a unified, queryable record that aggregates every customer's sales, support, product usage, and financial data at both the corporate and facility level.
+
+The project is structured into four phases: (1) defining the initial user experience and department requirements, (2) engineering the data pipelines and core data model, (3) building and delivering department-specific dashboards, and (4) establishing ongoing data governance and the new-customer ID propagation workflow. The expected outcome is a BI platform that enables proactive, data-driven decisions across Finance, Customer Success, Sales, and Product — and that scales with Covr's continued growth.
+
+---
+
+## 2. Problem Statement
+
+Covr currently operates with six primary data systems that do not natively communicate with one another. The consequences are tangible and compounding:
+
+- **No unified customer record.** There is no single place to view a customer's contract status, product adoption, support history, and billing status simultaneously.
+
+- **Manual, error-prone reporting.** Teams export data from individual tools and reconcile it in spreadsheets, introducing delays and inconsistencies.
+
+- **Incomplete cross-system identity.** As of the current data audit, QuickBooks records match to ClickUp at only 54.8%, and there is no automated process to ensure that new customers receive a consistent unique identifier (`CovrID`) across all systems at the time of sale.
+
+- **Reactive rather than proactive intelligence.** Without a centralized data layer, identifying at-risk customers, tracking cohort performance, or modeling revenue scenarios requires significant manual effort.
+
+---
+
+## 3. Proposed Solution
+
+### 3.1 Technology Stack
+
+| Layer | Technology | Role |
+| --- | --- | --- |
+| **Data Warehouse** | Google BigQuery | Central storage and transformation of all integrated data |
+| **ETL / Ingestion** | Airbyte | Daily automated sync from all API-connected sources |
+| **BI & Visualization** | Google Looker | Self-serve dashboards, scheduled reports, and ad hoc analysis |
+| **3rd Party Enrichment** | Definitive Healthcare | Monthly SFTP upload of facility and market data |
+
+- look into bigquery/google looker natural language capability
+
+
+
+### 3.2 The Customer Cube
+
+The organizing principle of the entire data model is the **Customer Cube** — a denormalized, aggregated entity that represents a complete view of each customer at two levels of granularity:
+
+- **Corporate level:** The parent organization (e.g., a multi-facility operator), including contract terms, ARR, NPS, and aggregate product adoption.
+
+- **Facility level:** Each individual care facility, including product subscriptions, usage metrics, support history, and billing status.
+
+**ClickUp serves as the system of record and master key.** Every other data source resolves back to a ClickUp record via a shared unique identifier (`covr_id`). This design decision reflects the current state of the data, where ClickUp already has the highest and most reliable match rates across all integrated systems.
+
+---
+
+## 4. Data Sources & Current Integration Status
+
+The table below summarizes the six data sources in scope, their integration method, and the current state of identity resolution against ClickUp.
+
+| Source | Domain | Integration | Sync Frequency | Match Rate to ClickUp | Status |
+| --- | --- | --- | --- | --- | --- |
+| **ClickUp** | Operations / Master Record | Airbyte → BigQuery | Daily | — (master key) | Active |
+| **HubSpot** | CRM / Sales | Airbyte → BigQuery | Daily | 99.1% (of records with `covr_id`) | Active |
+| **PostHog** | Product Analytics | Airbyte → BigQuery | Daily | 97.9% (of facilities with `CovrID`) | Active |
+| **Intercom** | Customer Support | Airbyte → BigQuery | Daily | 95.7% (of records with `CovrID`) | Active |
+| **QuickBooks** | Finance / Billing | Airbyte → BigQuery | Daily | 54.8% (known data quality gap) | Active — IDs need remediation |
+| **Definitive Healthcare** | Market / Facility Enrichment | SFTP → BigQuery | Monthly | N/A (enrichment source) | Active |
+
+The QuickBooks match rate gap is a known issue. Unique identifiers will be manually entered into QuickBooks records via the UI as an interim measure while the QuickBooks API is evaluated for a long-term automated solution (see Section 7.1).
+
+---
+
+## 5. Department Requirements
+
+The following section captures the must-have and nice-to-have data needs gathered from each department. These requirements directly inform the dashboard designs and data model priorities.
+
+### 5.1 Finance
+
+**Must-Have Outputs:**
+
+| Metric / Artifact | Description | Source(s) |
+| --- | --- | --- |
+| ARR Bridge | New, expansion, contraction, and churn broken out by month | QuickBooks, ClickUp |
+| SaaS Metrics | NRR, GRR, LTV, LTV/CAC | QuickBooks, HubSpot |
+| Customer Cube | Unified customer record with ARR/MRR, product mix, contract dates, churn data | All sources |
+| Churn & Cancellation Detail | Churn date, reason category, preventable vs. unpreventable | ClickUp, HubSpot |
+| Cohort Analysis | Revenue retention by customer cohort | QuickBooks, ClickUp |
+| Pricing & Contract Terms | Renewal dates, discounts, SLAs, termination rights | HubSpot, ClickUp |
+
+**Key Business Logic Notes:** ARR recognition is based on billing date, not signed date. Downsell events (e.g., facility divestiture, acquisition restructuring) require careful classification — the Finance team has flagged several edge cases (PACS/Ensign, Sinceri/Life Care) that need explicit handling in the data model. The goal is to track both the downsell event and the net revenue impact separately.
+
+### 5.2 Customer Success
+
+**Must-Have Outputs:**
+
+** AI slop ***
+
+| Metric / Artifact | Description | Source(s) |
+| --- | --- | --- |
+| Customer Health Score | Green / Yellow / Red classification with NPS, bug count, adoption rate | Intercom, PostHog, ClickUp |
+| Product Adoption Metrics | WAU/DAU by role, feature adoption rate, open vs. filled shifts | PostHog, CovrDB |
+| Invoice Visibility | Open invoices vs. current — enables proactive CS outreach | QuickBooks, ClickUp |
+| Onboarding Timeline | Start date, go-live date, contacts involved, custom feature commitments | ClickUp |
+| Agency & Overtime Metrics | Agency hours, overtime, PPD tied to CMS star ratings | PostHog, CovrDB |
+| QBR / Corporate Aggregation | Aggregate overtime and agency usage across all facilities in a corporation | PostHog, ClickUp |
+
+### 5.3 Product
+
+**Must-Have Outputs:**
+
+| Metric / Artifact | Description | Source(s) |
+| --- | --- | --- |
+| Facility Demographics | Size category, facility type (SNF / AL), partner affiliation | ClickUp, Definitive Healthcare |
+| Feature Adoption by Product | % of facilities with ≥1 WAU per feature (View, Flow, Sync) | PostHog |
+| Penetration Rate | Sold facilities vs. total facilities in a corporation | ClickUp, Definitive Healthcare |
+| Churn Detail | Reason category, cancelled products, lost revenue | ClickUp, HubSpot |
+| Engagement Metrics | Surveys sent/responded, messages sent, reports viewed (PowerBI REST API) | PostHog, CovrDB |
+
+### 5.4 Sales
+
+**Must-Have Outputs:**
+
+| Metric / Artifact | Description | Source(s) |
+| --- | --- | --- |
+| Sales Funnel | Lead source, opportunity date, channel, rep, close date | HubSpot |
+| CAC | Cost of customer acquisition by channel and rep | HubSpot, QuickBooks |
+| Deal Composition | Services closed, features by product, custom work commitments | HubSpot, ClickUp |
+| Buyer Intelligence | Contacts involved in demos vs. signing, roles/titles | HubSpot |
+| Upsell / Down-sell Events | Service and billing changes over time | HubSpot, QuickBooks |
+
+---
+
+## 6. Data Architecture
+
+### 6.1 ETL Pipeline — End-to-End Data Flow
+
+The diagram below illustrates the complete data flow from source systems through ingestion, transformation, and into the BI layer. All API-connected sources flow through **Airbyte** on a daily schedule. Definitive Healthcare data is loaded via a monthly SFTP upload directly into BigQuery.
+
+![ETL Flow Diagram](https://private-us-east-1.manuscdn.com/sessionFile/OqPOo1zq2ZhayriBXl37wA/sandbox/jHnLbO5gqBmKSVlPS7Bxxu-images_1772209171569_na1fn_L2hvbWUvdWJ1bnR1L2V0bA.png?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvT3FQT28xenEyWmhheXJpQlhsMzd3QS9zYW5kYm94L2pIbkxiTzVncUJtS1NWbFBTN0J4eHUtaW1hZ2VzXzE3NzIyMDkxNzE1NjlfbmExZm5fTDJodmJXVXZkV0oxYm5SMUwyVjBiQS5wbmciLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTg3NjE2MDB9fX1dfQ__&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=MwUGqAsRRFL-NShMZ02vqaEvxOgakYn4w5PVtdP6QRGJaLDoxaAZvYG7HrGfrJL~6uKZ8Sy5Fm~AlF16l6uZ5V4XhQBsxATheGebxGs114~Ex9KQyJupFZQgJNjp7To-FRszsxkrawvY51UeanXHFkIKrjeJeXl-zCZswQYP5OGt~EsxUKJ6L~ptLb8h0Ap7BbJYCS9nWWNpcpCKHxt02qG6P~BApa9fRWXfoPQ7viffnRp1r4o72853ZbrxuA55vLvkuS0BmMItXFiSbhdutA3AA5D0p6balQjVmOuQ6a7isgh8n1dU52gXA5VLqR9Ee61nEEL1ERo0TnNiupeulg__)
+
+*** user aggregation for the customer cube
+
+reverse etl - is a lower priority use case from an embedded dashboard that pulls across 
+
+- aggregation in bigquery and then push back to clickup
+
+
+
+### 6.2 Entity Relationship Diagram (ERD)
+
+The ERD below defines the core entities in the BigQuery data model and their relationships. ClickUp is the hub entity; all other source tables join to it via `clickup_id`. The **Customer Cube** is the final, aggregated output that combines fields from all upstream sources.
+
+```mermaid
+erDiagram
+    CLICKUP["ClickUp_AirbyteCustom · task"] {
+        string id PK
+        string name
+        json list
+        json status
+        string date_created
+        string date_updated
+        boolean archived
+        json custom_fields
+    }
+
+    HUBSPOT["HubSpot_Airbyte"] {
+        string id PK
+        string covr_id FK
+    }
+
+    INTERCOM["Intercom_Airbyte · conversations"] {
+        integer created_at
+        string state
+        json statistics
+        json conversation_rating
+    }
+
+    QUICKBOOKS["Quickbooks_Airbyte"] {
+        string id PK
+        string covr_id FK
+    }
+
+    POSTHOG["PostHog_Direct"] {
+        string distinct_id PK
+        string covr_id FK
+    }
+
+    DEFINITIVE["definitive_healthcare"] {
+        string definitive_hospital_id PK
+        string hospital_name
+    }
+
+    CLICKUP ||--o{ HUBSPOT : "covr_id"
+    CLICKUP ||--o{ INTERCOM : "covr_id"
+    CLICKUP ||--o{ QUICKBOOKS : "covr_id"
+    CLICKUP ||--o{ POSTHOG : "covr_id"
+    CLICKUP ||--o{ DEFINITIVE : "facility name match"
+```
+
+> **Schema status:** `ClickUp_AirbyteCustom.task` and `Intercom_Airbyte.conversations` have documented column schemas above. `HubSpot_Airbyte`, `Quickbooks_Airbyte`, `PostHog_Direct`, and `definitive_healthcare` are active in BigQuery — full column schemas to be added during Phase 2 staging layer build.
+
+---
+
+## 7. Scoped Sub-Projects
+
+### 7.1 QuickBooks Data Quality Remediation (rerun after the matching has been improved
+
+**Problem:** The current QuickBooks-to-ClickUp match rate is 54.8%, driven by missing `covr_id` values on QuickBooks customer records. This gap prevents accurate financial data from being joined to the Customer Cube for a significant portion of the customer base.
+
+**Interim Solution:** Manually enter `covr_id` values into QuickBooks customer records via the QuickBooks UI. This is a one-time remediation effort for existing records.
+
+**Long-Term Solution:** Evaluate the QuickBooks API to determine whether `covr_id` can be written back automatically when a new customer is created, eliminating the need for manual entry going forward.
+
+**Owner:** Austin (coordination), Engineering (API evaluation)**Definition of Done:** QuickBooks match rate ≥ 95% against ClickUp records.
+
+### 7.2 New Customer ID Propagation Workflow
+
+**Problem:** When a new customer is created in Covr, there is currently no automated process to ensure their `CovrID` is consistently populated across ClickUp, Intercom, and PostHog. This creates the same fragmentation problem over time even as the current backlog is remediated.
+
+**Solution:** Implement an automated workflow triggered by a **Closed Won deal event in HubSpot**. When a deal reaches Closed Won status, the workflow will:
+
+1. Identify all referenced entities on the deal — the **Company** record, the **Corporation** record, and all associated **Contacts**.
+
+1. Generate or retrieve the `CovrID` for each entity.
+
+1. Write the `CovrID` back to the corresponding ClickUp records (company, corporation, and each contact) via the ClickUp API.
+
+1. Propagate the `CovrID` to the matching records in **Intercom** and **PostHog**.
+
+1. The next daily Airbyte sync will pick up the updated identifiers across all systems, ensuring the Customer Cube record is fully resolved within 24 hours of deal close.
+
+The appendix diagram below illustrates this workflow in full detail.
+
+**Owner:** Engineering (Jeff / Jim)**Definition of Done:** 100% of new Closed Won deals result in a fully resolved Customer Cube record within 24 hours of deal close, with no manual intervention required.
+
+---
+
+## 8. Definition of Done — Project Deliverables
+
+The following artifacts constitute the complete definition of done for this initiative. Each deliverable is assigned to a phase and an owner.
+
+| Deliverable | Description | Phase | Owner |
+| --- | --- | --- | --- |
+| Department Requirements Matrix | Documented must-haves and nice-to-haves per team (this document) | 1 | Austin |
+| Data Engineering Diagram (ETL) | End-to-end pipeline from source to Looker | 1 | Austin / Engineering |
+| Entity Relationship Diagram (ERD) | BigQuery schema with all entities and relationships | 1 | Austin / Engineering |
+| BigQuery Schema Build | Staging tables, transformation logic, Customer Cube model | 2 | Engineering |
+| Airbyte Pipeline Validation | All five API sources confirmed syncing daily with >95% ID match | 2 | Engineering |
+| QuickBooks ID Remediation | Match rate ≥ 95% | 2 | Austin |
+| Finance Dashboard (Looker) | ARR bridge, SaaS metrics, churn detail | 3 | Austin / Tanner |
+| CS Dashboard (Looker) | Health scores, adoption, invoice visibility | 3 | Austin / CS Team |
+| Product Dashboard (Looker) | WAU/DAU, feature adoption, penetration | 3 | Austin / Product Team |
+| Sales Dashboard (Looker) | Pipeline, CAC, deal composition | 3 | Austin / Sales Team |
+| New Customer ID Workflow | Automated CovrID propagation on Closed Won | 4 | Engineering |
+| Data Governance Documentation | Field definitions, refresh schedules, ownership | 4 | Austin |
+
+---
+
+## 9. Risks & Mitigation
+
+| Risk | Likelihood | Impact | Mitigation |
+| --- | --- | --- | --- |
+| **Competing engineering priorities** delay pipeline work | Medium | High | Secure dedicated sprint allocation; treat data warehouse as a named engineering project with a ClickUp milestone |
+| **QuickBooks API limitations** prevent automated ID write-back | Medium | Medium | Manual UI entry as interim; evaluate API in parallel without blocking dashboard delivery |
+| **Scope creep** from department dashboard requests | High | Medium | Lock Phase 3 dashboard scope to documented must-haves; new requests enter a backlog for Phase 4+ |
+| **Data quality issues** in source systems surface during modeling | Medium | High | Build validation checks into the transformation layer; flag anomalies in a data quality dashboard |
+| **Austin's limited visibility into product data** (PostHog / CovrDB) | Medium | Medium | Schedule working sessions with Product team and Engineering to map PostHog event taxonomy before schema build |
+| **HubSpot workflow automation complexity** for ID propagation | Low | High | Scope the workflow in a dedicated engineering spike before committing to a timeline |
+
+---
+
+## 10. Reporting Cadence & Governance
+
+Austin will post a weekly progress update to the `#proj_data_warehouse` Slack channel covering: work completed, blockers, decisions made, and upcoming milestones. All project artifacts, notes, and findings will be maintained in ClickUp at the [project task](https://app.clickup.com/t/86aedfa1n) and linked Google Docs.
+
+A steering review with the CEO, COO, and department leads will be scheduled at the close of each phase to confirm scope, review deliverables, and approve progression to the next phase.
+
+---
+
+## Appendix A — ETL Pipeline Diagram (Full Detail)
+
+![ETL Flow Diagram](https://private-us-east-1.manuscdn.com/sessionFile/OqPOo1zq2ZhayriBXl37wA/sandbox/jHnLbO5gqBmKSVlPS7Bxxu-images_1772209171569_na1fn_L2hvbWUvdWJ1bnR1L2V0bA.png?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvT3FQT28xenEyWmhheXJpQlhsMzd3QS9zYW5kYm94L2pIbkxiTzVncUJtS1NWbFBTN0J4eHUtaW1hZ2VzXzE3NzIyMDkxNzE1NjlfbmExZm5fTDJodmJXVXZkV0oxYm5SMUwyVjBiQS5wbmciLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTg3NjE2MDB9fX1dfQ__&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=MwUGqAsRRFL-NShMZ02vqaEvxOgakYn4w5PVtdP6QRGJaLDoxaAZvYG7HrGfrJL~6uKZ8Sy5Fm~AlF16l6uZ5V4XhQBsxATheGebxGs114~Ex9KQyJupFZQgJNjp7To-FRszsxkrawvY51UeanXHFkIKrjeJeXl-zCZswQYP5OGt~EsxUKJ6L~ptLb8h0Ap7BbJYCS9nWWNpcpCKHxt02qG6P~BApa9fRWXfoPQ7viffnRp1r4o72853ZbrxuA55vLvkuS0BmMItXFiSbhdutA3AA5D0p6balQjVmOuQ6a7isgh8n1dU52gXA5VLqR9Ee61nEEL1ERo0TnNiupeulg__)
+
+---
+
+## Appendix B — Entity Relationship Diagram (Full Detail)
+
+BigQuery project: `gen-lang-client-0844868008` · All six source datasets shown below.
+
+```mermaid
+erDiagram
+    CLICKUP["ClickUp_AirbyteCustom · task"] {
+        string id PK
+        string name
+        json list
+        json status
+        string date_created
+        string date_updated
+        boolean archived
+        json custom_fields
+    }
+
+    HUBSPOT["HubSpot_Airbyte"] {
+        string id PK
+        string covr_id FK
+    }
+
+    INTERCOM["Intercom_Airbyte · conversations"] {
+        integer created_at
+        string state
+        json statistics
+        json conversation_rating
+    }
+
+    QUICKBOOKS["Quickbooks_Airbyte"] {
+        string id PK
+        string covr_id FK
+    }
+
+    POSTHOG["PostHog_Direct"] {
+        string distinct_id PK
+        string covr_id FK
+    }
+
+    DEFINITIVE["definitive_healthcare"] {
+        string definitive_hospital_id PK
+        string hospital_name
+    }
+
+    CLICKUP ||--o{ HUBSPOT : "covr_id"
+    CLICKUP ||--o{ INTERCOM : "covr_id"
+    CLICKUP ||--o{ QUICKBOOKS : "covr_id"
+    CLICKUP ||--o{ POSTHOG : "covr_id"
+    CLICKUP ||--o{ DEFINITIVE : "facility name match"
+```
+
+---
+
+### ClickUp_AirbyteCustom · task — `custom_fields` keys
+
+The `custom_fields` column is a JSON array. Keys currently extracted in SQL:
+
+| Field Name | Type | Notes |
+| --- | --- | --- |
+| `Hubspot URL` | string | HubSpot company deep-link; `hubspot_company_id` parsed via regex `/0-2/(\d+)` |
+| `Customer Type` | string (orderindex) | 0 = Flow+View, 1 = Flow, 2 = View, 3 = Sync |
+| `Services` | JSON array | UUIDs mapped to Flow / View / Sync service options |
+| `Total Facilities` | integer | Manual override of facility count |
+| `Org Code` | JSON | Organization code |
+| `🏠 Companies` | JSON array | Linked facility task objects — each contains `id`, `name`, `status` |
+| `Billing Stop Date` | string (ms epoch) | Converted via `TIMESTAMP_MILLIS` |
+| `Go-Live Date` | string (ms epoch) | Converted via `TIMESTAMP_MILLIS` |
+| `Dev Onboarding Start Date` | string (ms epoch) | Converted via `TIMESTAMP_MILLIS` |
+
+### Intercom_Airbyte · conversations — JSON keys
+
+| Column | JSON path | Type | Notes |
+| --- | --- | --- | --- |
+| `statistics` | `$.first_close_at` | INT64 | Unix timestamp of first close |
+| `statistics` | `$.time_to_admin_reply` | FLOAT64 | Seconds to first admin reply |
+| `conversation_rating` | `$.created_at` | INT64 | Unix timestamp of rating |
+| `conversation_rating` | `$.rating` | INT64 | 1–5 CSAT scale; ≥4 = positive |
+
+### Pending — Schema documentation needed
+
+| Dataset | Integration | Priority |
+| --- | --- | --- |
+| `HubSpot_Airbyte` | Airbyte daily sync | Phase 2 — Sales & Finance dashboards |
+| `Quickbooks_Airbyte` | Airbyte daily sync | Phase 2 — Finance dashboard; ID remediation first |
+| `PostHog_Direct` | Direct connector | Phase 2 — CS & Product dashboards |
+| `definitive_healthcare` | Monthly SFTP upload | Phase 2 — Penetration & market enrichment |
+
+---
+
+## Appendix C — New Customer ID Propagation Workflow
+
+This diagram illustrates the automated workflow that fires when a deal reaches **Closed Won** status in HubSpot. The workflow writes the `CovrID` back to ClickUp at the company, corporation, and contact levels via API, then propagates those identifiers downstream to Intercom and PostHog. The next daily Airbyte sync carries the updated values into BigQuery, ensuring the Customer Cube record is fully resolved within 24 hours.
+
+![New Customer ID Propagation Workflow](https://private-us-east-1.manuscdn.com/sessionFile/OqPOo1zq2ZhayriBXl37wA/sandbox/jHnLbO5gqBmKSVlPS7Bxxu-images_1772209171569_na1fn_L2hvbWUvdWJ1bnR1L2lkX3Byb3BhZ2F0aW9u.png?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvT3FQT28xenEyWmhheXJpQlhsMzd3QS9zYW5kYm94L2pIbkxiTzVncUJtS1NWbFBTN0J4eHUtaW1hZ2VzXzE3NzIyMDkxNzE1NjlfbmExZm5fTDJodmJXVXZkV0oxYm5SMUwybGtYM0J5YjNCaFoyRjBhVzl1LnBuZyIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5ODc2MTYwMH19fV19&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=orh5xKcXNC8y2gYpYyG4XRZEqON-ZFyBvIrV0zqR7rELWNihnpTEwQ0aXq3azRwgCoA1~NTKLiYKSKwLt-H2HQerjVYXYysi0CjEYkblAEbjbzAEJhS7TJXWIhfwvqK~ExzQGUH5G5zV1e55ekiML-cGnmkqqzpj79xc0jy~pHSvkpC5mCE5LclZ5XiJZgBpjdHZlwo7jS29HpR9EZml~5SKQSQCkLQMHQPQRWnEjlH6~6cJsF2sndO4jT3jZgYgA89ISGU3M-wefwauDH9HjYEIDV40MjrK5PS8rEyIfgAmyz8YuopXpQljQkklxeMyk-wsx0AdKBS9ZmHggX4jxA__)
+

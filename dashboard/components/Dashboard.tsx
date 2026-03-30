@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { signOut } from 'next-auth/react';
 import {
   BarChart,
@@ -22,47 +22,21 @@ import {
 } from 'recharts';
 import { DateRangePicker, SalesRepFilter } from './filters';
 import type { DateRange, SalesRepFilterValue } from './filters';
+import TimelineSelector, { TimelinePeriod } from './TimelineSelector';
+import {
+  filterCorporationsByTimeline,
+  recalculateStatsFromCorporations,
+  getTimelineLabel,
+  Corporation as TimelineCorporation,
+  Stats as TimelineStats,
+} from '@/lib/timeline-utils';
 
-interface Corporation {
-  clickup_task_id: string;
-  corporation_name: string;
-  task_status: string;
-  task_status_label: string;
-  customer_type_label: string | null;
-  hubspot_url: string | null;
-  hubspot_company_id: string | null;
-  total_facilities: number;
-  facilities_in_dh: number;
-  facilities_matched: number;
-  penetration_rate: number;
-  product_mix: string;
+interface Corporation extends TimelineCorporation {
+  // Inherits all fields from timeline-utils
 }
 
-interface Stats {
-  total_corporations: number;
-  active_status_count: number;
-  churned_status_count: number;
-  implementation_status_count: number;
-  stalled_status_count: number;
-  offboarding_status_count: number;
-  flow_customers: number;
-  view_customers: number;
-  sync_customers: number;
-  avg_penetration_rate: number;
-  total_facilities: number;
-  total_facilities_in_dh: number;
-  // Facility counts by corporation status
-  active_facilities: number;
-  active_facilities_in_dh: number;
-  churned_facilities: number;
-  churned_facilities_in_dh: number;
-  implementation_facilities: number;
-  implementation_facilities_in_dh: number;
-  stalled_facilities: number;
-  stalled_facilities_in_dh: number;
-  offboarding_facilities: number;
-  offboarding_facilities_in_dh: number;
-  data_loaded_at: string;
+interface Stats extends TimelineStats {
+  // Inherits all fields from timeline-utils
 }
 
 interface DashboardProps {
@@ -97,6 +71,8 @@ export default function Dashboard({ user }: DashboardProps) {
     'corporation_name' | 'task_status_label' | 'product_mix' | 'total_facilities' | 'facilities_in_dh' | 'penetration_rate'
   >('penetration_rate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [timeline, setTimeline] = useState<TimelinePeriod>('all');
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -119,6 +95,12 @@ export default function Dashboard({ user }: DashboardProps) {
     }
   };
 
+  const handleTimelineChange = (period: TimelinePeriod) => {
+    setIsTransitioning(true);
+    setTimeline(period);
+    setTimeout(() => setIsTransitioning(false), 300);
+  };
+
   const handleSort = (col: typeof sortColumn) => {
     if (sortColumn === col) {
       setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -128,7 +110,19 @@ export default function Dashboard({ user }: DashboardProps) {
     }
   };
 
-  const filteredCorporations = corporations.filter((corp) => {
+  // Apply timeline filter to all corporations
+  const timelineFilteredCorporations = useMemo(() => {
+    return filterCorporationsByTimeline(corporations, timeline);
+  }, [corporations, timeline]);
+
+  // Recalculate stats based on timeline-filtered corporations
+  const timelineFilteredStats = useMemo(() => {
+    if (!stats) return null;
+    return recalculateStatsFromCorporations(timelineFilteredCorporations, stats);
+  }, [timelineFilteredCorporations, stats]);
+
+  // Apply UI filters (status, product, search) on top of timeline filter
+  const filteredCorporations = timelineFilteredCorporations.filter((corp) => {
     const matchesTaskStatus =
       selectedTaskStatus === 'all' || corp.task_status_label === selectedTaskStatus;
     const matchesProduct =
@@ -140,22 +134,22 @@ export default function Dashboard({ user }: DashboardProps) {
   });
 
   const productMixData = [
-    { name: 'Flow', value: stats?.flow_customers || 0 },
-    { name: 'View', value: stats?.view_customers || 0 },
-    { name: 'Sync', value: stats?.sync_customers || 0 },
+    { name: 'Flow', value: timelineFilteredStats?.flow_customers || 0 },
+    { name: 'View', value: timelineFilteredStats?.view_customers || 0 },
+    { name: 'Sync', value: timelineFilteredStats?.sync_customers || 0 },
   ].filter((item) => item.value > 0);
 
   // Customer Status Data (from ClickUp task status)
   const taskStatusData = [
-    { name: 'Active', count: stats?.active_status_count || 0 },
-    { name: 'Churned', count: stats?.churned_status_count || 0 },
-    { name: 'Implementation', count: stats?.implementation_status_count || 0 },
-    { name: 'Stalled', count: stats?.stalled_status_count || 0 },
-    { name: 'Offboarding', count: stats?.offboarding_status_count || 0 },
+    { name: 'Active', count: timelineFilteredStats?.active_status_count || 0 },
+    { name: 'Churned', count: timelineFilteredStats?.churned_status_count || 0 },
+    { name: 'Implementation', count: timelineFilteredStats?.implementation_status_count || 0 },
+    { name: 'Stalled', count: timelineFilteredStats?.stalled_status_count || 0 },
+    { name: 'Offboarding', count: timelineFilteredStats?.offboarding_status_count || 0 },
   ].filter((item) => item.count > 0);
 
-  // GTM priority: lowest-penetration active + implementation accounts (uses all corps, ignores filters)
-  const penetrationData = corporations
+  // GTM priority: lowest-penetration active + implementation accounts (uses timeline-filtered corps)
+  const penetrationData = timelineFilteredCorporations
     .filter((c) => c.task_status_label === 'Active' || c.task_status_label === 'Implementation')
     .sort((a, b) => (a.penetration_rate || 0) - (b.penetration_rate || 0))
     .slice(0, 10)
@@ -170,38 +164,38 @@ export default function Dashboard({ user }: DashboardProps) {
   const facilitiesByStatusData = [
     {
       status: 'Active',
-      matched: stats?.active_facilities_in_dh || 0,
-      unmatched: (stats?.active_facilities || 0) - (stats?.active_facilities_in_dh || 0),
+      matched: timelineFilteredStats?.active_facilities_in_dh || 0,
+      unmatched: (timelineFilteredStats?.active_facilities || 0) - (timelineFilteredStats?.active_facilities_in_dh || 0),
     },
     {
       status: 'Implementation',
-      matched: stats?.implementation_facilities_in_dh || 0,
-      unmatched: (stats?.implementation_facilities || 0) - (stats?.implementation_facilities_in_dh || 0),
+      matched: timelineFilteredStats?.implementation_facilities_in_dh || 0,
+      unmatched: (timelineFilteredStats?.implementation_facilities || 0) - (timelineFilteredStats?.implementation_facilities_in_dh || 0),
     },
     {
       status: 'Stalled',
-      matched: stats?.stalled_facilities_in_dh || 0,
-      unmatched: (stats?.stalled_facilities || 0) - (stats?.stalled_facilities_in_dh || 0),
+      matched: timelineFilteredStats?.stalled_facilities_in_dh || 0,
+      unmatched: (timelineFilteredStats?.stalled_facilities || 0) - (timelineFilteredStats?.stalled_facilities_in_dh || 0),
     },
     {
       status: 'Offboarding',
-      matched: stats?.offboarding_facilities_in_dh || 0,
-      unmatched: (stats?.offboarding_facilities || 0) - (stats?.offboarding_facilities_in_dh || 0),
+      matched: timelineFilteredStats?.offboarding_facilities_in_dh || 0,
+      unmatched: (timelineFilteredStats?.offboarding_facilities || 0) - (timelineFilteredStats?.offboarding_facilities_in_dh || 0),
     },
     {
       status: 'Churned',
-      matched: stats?.churned_facilities_in_dh || 0,
-      unmatched: (stats?.churned_facilities || 0) - (stats?.churned_facilities_in_dh || 0),
+      matched: timelineFilteredStats?.churned_facilities_in_dh || 0,
+      unmatched: (timelineFilteredStats?.churned_facilities || 0) - (timelineFilteredStats?.churned_facilities_in_dh || 0),
     },
   ].filter((d) => d.matched + d.unmatched > 0);
 
   const weightedPenetration =
-    stats && stats.total_facilities > 0
-      ? Math.round((stats.total_facilities_in_dh / stats.total_facilities) * 100)
+    timelineFilteredStats && timelineFilteredStats.total_facilities > 0
+      ? Math.round((timelineFilteredStats.total_facilities_in_dh / timelineFilteredStats.total_facilities) * 100)
       : 0;
 
-  // GTM tier metrics — scoped to Active accounts only, unaffected by table filters
-  const activeCorps = corporations.filter((c) => c.task_status_label === 'Active');
+  // GTM tier metrics — scoped to Active accounts only, affected by timeline filter
+  const activeCorps = timelineFilteredCorporations.filter((c) => c.task_status_label === 'Active');
   const tierBelow50 = activeCorps.filter((c) => (c.penetration_rate || 0) < 0.5);
   const tierMid = activeCorps.filter((c) => (c.penetration_rate || 0) >= 0.5 && (c.penetration_rate || 0) < 0.8);
   const tierAbove80 = activeCorps.filter((c) => (c.penetration_rate || 0) >= 0.8);
@@ -266,10 +260,10 @@ export default function Dashboard({ user }: DashboardProps) {
   const sortIcon = (col: typeof sortColumn) =>
     sortColumn === col ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ' ↕';
 
-  const dataFreshness = stats?.data_loaded_at
+  const dataFreshness = timelineFilteredStats?.data_loaded_at
     ? (() => {
         try {
-          return new Date(stats.data_loaded_at).toLocaleString('en-US', {
+          return new Date(timelineFilteredStats.data_loaded_at).toLocaleString('en-US', {
             month: 'short', day: 'numeric', year: 'numeric',
             hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
           });
@@ -278,6 +272,8 @@ export default function Dashboard({ user }: DashboardProps) {
         }
       })()
     : null;
+
+  const timelineLabel = getTimelineLabel(timeline);
 
   if (loading) {
     return (
@@ -304,7 +300,7 @@ export default function Dashboard({ user }: DashboardProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen bg-gray-50 transition-opacity duration-300 ${isTransitioning ? 'opacity-90' : 'opacity-100'}`}>
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -339,19 +335,33 @@ export default function Dashboard({ user }: DashboardProps) {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Timeline Selector */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <TimelineSelector
+            value={timeline}
+            onChange={handleTimelineChange}
+          />
+          <div className="text-sm text-gray-500">
+            Showing data for: <span className="font-medium text-gray-700">{timelineLabel}</span>
+            <span className="ml-2 text-gray-400">
+              ({timelineFilteredCorporations.length} of {corporations.length} corporations)
+            </span>
+          </div>
+        </div>
+
         {/* Summary Cards */}
-        {stats && (
+        {timelineFilteredStats && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
             <div className="card border-l-4 border-l-covr-blue">
               <p className="text-sm text-gray-600 mb-1">Total Corporations</p>
               <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">
-                {stats.total_corporations}
+                {timelineFilteredStats.total_corporations}
               </p>
             </div>
             <div className="card border-l-4 border-l-green-500">
               <p className="text-sm text-gray-600 mb-1">Active</p>
               <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">
-                {stats.active_status_count}
+                {timelineFilteredStats.active_status_count}
               </p>
             </div>
             <div className="card border-l-4 border-l-covr-blue">
@@ -364,20 +374,20 @@ export default function Dashboard({ user }: DashboardProps) {
             <div className="card border-l-4 border-l-gray-400">
               <p className="text-sm text-gray-600 mb-1">Total Facilities</p>
               <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">
-                {stats.total_facilities?.toLocaleString() || 0}
+                {timelineFilteredStats.total_facilities?.toLocaleString() || 0}
               </p>
             </div>
             <div className="card border-l-4 border-l-covr-teal">
               <p className="text-sm text-gray-600 mb-1">Definitive Healthcare</p>
               <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">
-                {stats.total_facilities_in_dh?.toLocaleString() || 0}
+                {timelineFilteredStats.total_facilities_in_dh?.toLocaleString() || 0}
               </p>
             </div>
           </div>
         )}
 
         {/* GTM Penetration Tiers — Active accounts only */}
-        {corporations.length > 0 && (
+        {timelineFilteredCorporations.length > 0 && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="bg-white rounded-lg shadow-md p-5 border-l-4 border-l-red-500">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Below 50% — Active</p>
@@ -510,7 +520,7 @@ export default function Dashboard({ user }: DashboardProps) {
             GTM Priority — Lowest Penetration (Active &amp; In Implementation)
           </h3>
           <p className="text-sm text-gray-500 mb-4">
-            Accounts furthest from the 80% target — always shows all active/implementation corps regardless of filters
+            Accounts furthest from the 80% target — shows active/implementation corps for selected timeline
           </p>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={penetrationData} layout="vertical">
@@ -709,6 +719,7 @@ export default function Dashboard({ user }: DashboardProps) {
                     setSelectedTaskStatus('all');
                     setSelectedProduct('all');
                     setSearchQuery('');
+                    setTimeline('all');
                   }}
                   className="btn-secondary text-xs py-2"
                 >
