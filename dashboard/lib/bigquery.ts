@@ -332,3 +332,80 @@ export async function getSupportMetrics(params?: {
   const [rows] = await bigquery.query({ query, params: queryParams });
   return rows as SupportMetrics[];
 }
+
+// ============================================================
+// In-Month Conversion data
+// ============================================================
+export interface InMonthConversionData {
+  month_start: string;
+  month_label: string;
+  year: number;
+  month_number: number;
+  // Entering pipeline
+  entering_expected: number;
+  entering_later_month: number;
+  entering_total: number;
+  // Outcomes (from Expected entering deals)
+  won_from_expected: number;
+  lost_from_expected: number;
+  pushed_from_expected: number;
+  // Outcomes (all entering deals)
+  won_total: number;
+  lost_total: number;
+  pushed_total: number;
+  no_change_total: number;
+  // Core metric & ratios
+  in_month_conversion_pct: number | null;
+  win_rate_pct: number | null;
+  loss_rate_pct: number | null;
+  push_rate_pct: number | null;
+  realized_rate_pct: number | null;
+  // Dollar amounts
+  won_amount_expected: number;
+  entering_amount_expected: number;
+  lost_amount_expected: number;
+  pushed_amount_expected: number;
+  dollar_conversion_pct: number | null;
+  // Pipeline health
+  pushed_expected_to_expected: number;
+  pushed_expected_to_later: number;
+  _loaded_at: string;
+}
+
+export async function getInMonthConversionData(): Promise<InMonthConversionData[]> {
+  const query = `
+    SELECT
+      month_start,
+      month_label,
+      year,
+      month_number,
+      entering_expected,
+      entering_later_month,
+      entering_total,
+      won_from_expected,
+      lost_from_expected,
+      pushed_from_expected,
+      won_total,
+      lost_total,
+      pushed_total,
+      no_change_total,
+      in_month_conversion_pct,
+      win_rate_pct,
+      loss_rate_pct,
+      push_rate_pct,
+      realized_rate_pct,
+      won_amount_expected,
+      entering_amount_expected,
+      lost_amount_expected,
+      pushed_amount_expected,
+      dollar_conversion_pct,
+      pushed_expected_to_expected,
+      pushed_expected_to_later,
+      _loaded_at
+    FROM \`gen-lang-client-0844868008.revops_analytics.in_month_conversion\`
+    ORDER BY month_start
+  `;
+
+  const [rows] = await bigquery.query({ query });
+  return rows as InMonthConversionData[];
+}
