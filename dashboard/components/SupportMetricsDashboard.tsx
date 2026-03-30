@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { signOut } from 'next-auth/react';
-import Link from 'next/link';
 import {
   BarChart,
   Bar,
@@ -34,15 +32,7 @@ interface SupportMetricsRow {
   first_response_median_hours: number | null;
 }
 
-interface SupportMetricsDashboardProps {
-  user: {
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-  };
-}
-
-export default function SupportMetricsDashboard({ user }: SupportMetricsDashboardProps) {
+export default function SupportMetricsDashboard() {
   const [data, setData] = useState<SupportMetricsRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -133,39 +123,6 @@ export default function SupportMetricsDashboard({ user }: SupportMetricsDashboar
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-covr-blue rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">C</span>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  Intercom Support Metrics
-                </h1>
-                <p className="text-sm text-gray-500">
-                  Weekly Support Performance{' '}
-                  <Link href="/" className="text-covr-blue hover:underline">
-                    Back to Penetration Dashboard
-                  </Link>
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">{user?.email}</span>
-              <button
-                onClick={() => signOut()}
-                className="btn-secondary text-sm"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Summary Cards */}
         {latest && (
