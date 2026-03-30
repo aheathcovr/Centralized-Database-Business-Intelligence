@@ -6,6 +6,7 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 248, 250, 252;
   --background-end-rgb: 241, 245, 249;
+  --sidebar-width: 14rem;
 }
 
 body {
@@ -22,7 +23,7 @@ body {
   .card {
     @apply bg-white rounded-lg shadow-md p-6;
   }
-  
+
   .btn-primary {
     @apply bg-covr-blue hover:bg-blue-800 text-white font-medium py-2 px-4 rounded transition-colors duration-150 cursor-pointer;
   }
@@ -30,8 +31,24 @@ body {
   .btn-secondary {
     @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition-colors duration-150 cursor-pointer;
   }
-  
+
   .filter-select {
     @apply border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-covr-blue focus:border-transparent;
+  }
+
+  .sidebar {
+    @apply fixed left-0 top-0 h-full w-56 bg-white border-r border-gray-200 z-30 flex flex-col;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors;
+  }
+
+  .nav-item-active {
+    @apply bg-covr-blue text-white;
+  }
+
+  .nav-item-inactive {
+    @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900;
   }
 }

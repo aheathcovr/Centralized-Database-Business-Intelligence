@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { signOut } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -39,13 +38,6 @@ interface Stats extends TimelineStats {
   // Inherits all fields from timeline-utils
 }
 
-interface DashboardProps {
-  user: {
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-  };
-}
 
 const COLORS = ['#1e40af', '#0d9488', '#059669', '#7c3aed', '#dc2626'];
 
@@ -57,7 +49,7 @@ const STATUS_COLORS: Record<string, string> = {
   Offboarding: '#64748b',
 };
 
-export default function Dashboard({ user }: DashboardProps) {
+export default function Dashboard() {
   const [corporations, setCorporations] = useState<Corporation[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -300,55 +292,19 @@ export default function Dashboard({ user }: DashboardProps) {
   }
 
   return (
-    <div className={`min-h-screen bg-gray-50 transition-opacity duration-300 ${isTransitioning ? 'opacity-90' : 'opacity-100'}`}>
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-covr-blue rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">C</span>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  Covr Penetration Dashboard
-                </h1>
-                <p className="text-sm text-gray-500">
-                  Business Intelligence for Leadership
-                  {dataFreshness && (
-                    <span className="ml-2 text-gray-400">· Data as of {dataFreshness}</span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">{user?.email}</span>
-              <button
-                onClick={() => signOut()}
-                className="btn-secondary text-sm"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div>
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Pipeline Overview</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Corporation penetration metrics and status distribution
+          {dataFreshness && (
+            <span className="ml-2 text-gray-400">· Data as of {dataFreshness}</span>
+          )}
+        </p>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Timeline Selector */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <TimelineSelector
-            value={timeline}
-            onChange={handleTimelineChange}
-          />
-          <div className="text-sm text-gray-500">
-            Showing data for: <span className="font-medium text-gray-700">{timelineLabel}</span>
-            <span className="ml-2 text-gray-400">
-              ({timelineFilteredCorporations.length} of {corporations.length} corporations)
-            </span>
-          </div>
-        </div>
-
+      <div className="max-w-7xl mx-auto">
         {/* Summary Cards */}
         {timelineFilteredStats && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
@@ -868,7 +824,7 @@ export default function Dashboard({ user }: DashboardProps) {
             </table>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
