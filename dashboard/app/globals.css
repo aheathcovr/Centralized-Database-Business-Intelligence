@@ -187,22 +187,6 @@ body > * {
     font-family: 'Space Grotesk', var(--font-fira-sans), sans-serif;
     letter-spacing: -0.02em;
   }
-
-  .view-toggle {
-    @apply inline-flex items-center gap-1 bg-gray-100 rounded-lg p-1;
-  }
-
-  .view-toggle-item {
-    @apply px-4 py-2 text-sm font-medium rounded-md transition-colors duration-150 whitespace-nowrap;
-  }
-
-  .view-toggle-item-active {
-    @apply bg-white text-covr-blue shadow-sm;
-  }
-
-  .view-toggle-item-inactive {
-    @apply text-gray-500 hover:text-gray-900;
-  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
