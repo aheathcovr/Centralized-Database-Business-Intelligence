@@ -399,3 +399,58 @@ export async function getInMonthConversion(params?: {
   const [rows] = await bigquery.query({ query, params: queryParams });
   return rows as InMonthConversionRow[];
 }
+
+// ============================================================
+// Rep Performance — from revops_analytics.rep_performance_view
+// ============================================================
+export interface RepPerformanceRow {
+  month_start: string;
+  month_label: string;
+  owner_id: string;
+  owner_full_name: string;
+  deals_won: number;
+  deals_lost: number;
+  deals_entered: number;
+  pipeline_won_amount: number;
+  pipeline_entered_amount: number;
+  avg_deal_size: number;
+  win_rate_pct: number | null;
+  close_rate_pct: number | null;
+  _loaded_at: string;
+}
+
+export async function getRepPerformance(params?: {
+  start_month?: string;
+  end_month?: string;
+  owner_id?: string;
+}): Promise<RepPerformanceRow[]> {
+  const whereConditions: string[] = [];
+  const queryParams: Record<string, string> = {};
+
+  if (params?.start_month) {
+    whereConditions.push('month_start >= @start_month');
+    queryParams.start_month = params.start_month;
+  }
+  if (params?.end_month) {
+    whereConditions.push('month_start <= @end_month');
+    queryParams.end_month = params.end_month;
+  }
+  if (params?.owner_id) {
+    whereConditions.push('owner_id = @owner_id');
+    queryParams.owner_id = params.owner_id;
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
+
+  const query = `
+    SELECT *
+    FROM \`gen-lang-client-0844868008.revops_analytics.rep_performance_view\`
+    ${whereClause}
+    ORDER BY month_start ASC
+  `;
+
+  const [rows] = await bigquery.query({ query, params: queryParams });
+  return rows as RepPerformanceRow[];
+}
