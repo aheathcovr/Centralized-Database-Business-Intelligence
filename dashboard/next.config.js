@@ -4,9 +4,9 @@ const isDev = process.env.NODE_ENV === 'development';
 const cspHeader = `
     default-src 'self';
     script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://accounts.google.com;
-    style-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com;
     img-src 'self' blob: data: https://lh3.googleusercontent.com;
-    font-src 'self';
     object-src 'none';
     base-uri 'self';
     form-action 'self';
@@ -15,6 +15,9 @@ const cspHeader = `
 `;
 
 const nextConfig = {
+  turbopack: {
+    root: '/Users/austinheath/.cline/worktrees/eec2e/Centralized Database Business Intelligence/dashboard',
+  },
   images: {
     remotePatterns: [
       {

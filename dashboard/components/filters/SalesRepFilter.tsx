@@ -111,7 +111,7 @@ export default function SalesRepFilter({
 
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>
         Sales Rep / Group
       </label>
       <div className="relative" ref={dropdownRef}>
@@ -309,7 +309,7 @@ export default function SalesRepFilter({
             {/* Footer Actions */}
             {selectedCount > 0 && (
               <div className="p-2 border-t border-gray-100 flex justify-between items-center">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                   {selectedCount} filter{selectedCount !== 1 ? 's' : ''} active
                 </span>
                 <button

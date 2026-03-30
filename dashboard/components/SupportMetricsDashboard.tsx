@@ -100,7 +100,7 @@ export default function SupportMetricsDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-covr-blue"></div>
+        <div className="spinner"></div>
       </div>
     );
   }
@@ -112,7 +112,7 @@ export default function SupportMetricsDashboard() {
           <svg className="w-8 h-8 text-red-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
-          <p className="text-red-600 font-medium mb-3">{error}</p>
+          <p className="font-medium mb-3" style={{ color: "#ef4444" }}>{error}</p>
           <button onClick={fetchData} className="btn-primary text-sm">
             Retry
           </button>
@@ -127,43 +127,43 @@ export default function SupportMetricsDashboard() {
         {/* Summary Cards */}
         {latest && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="card border-l-4 border-l-covr-blue">
-              <p className="text-sm text-gray-600 mb-1">Latest Week</p>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="card-glow">
+              <p className="text-[11px] uppercase tracking-widest mb-2">Latest Week</p>
+              <p className="text-2xl font-bold tracking-tight">
                 {formatWeekLabel(latest.week_start)}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-[11px] mt-1.5">
                 {latest.year_week}
               </p>
             </div>
-            <div className="card border-l-4 border-l-green-500">
-              <p className="text-sm text-gray-600 mb-1">New Tickets</p>
+            <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
+              <p className="text-[11px] uppercase tracking-widest mb-2">New Tickets</p>
               <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">
                 {latest.new_tickets}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-[11px] mt-1.5">
                 vs {latest.closed_tickets} closed
               </p>
             </div>
-            <div className="card border-l-4 border-l-purple-500">
-              <p className="text-sm text-gray-600 mb-1">CSAT Score</p>
+            <div className="card-glow" style={{ borderTopColor: "#8b5cf6" }}>
+              <p className="text-[11px] uppercase tracking-widest mb-2">CSAT Score</p>
               <p className="text-3xl font-bold text-purple-600 font-mono tabular-nums">
                 {latest.csat_score_pct != null
                   ? `${Math.round(latest.csat_score_pct * 100)}%`
                   : 'N/A'}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-[11px] mt-1.5">
                 {latest.csat_positive} positive / {latest.csat_negative} negative
               </p>
             </div>
-            <div className="card border-l-4 border-l-teal-500">
-              <p className="text-sm text-gray-600 mb-1">First Response</p>
+            <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
+              <p className="text-[11px] uppercase tracking-widest mb-2">First Response</p>
               <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">
                 {latest.first_response_avg_minutes != null
                   ? `${Math.round(latest.first_response_avg_minutes * 10) / 10}m`
                   : 'N/A'}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-[11px] mt-1.5">
                 avg / median{' '}
                 {latest.first_response_median_minutes != null
                   ? `${Math.round(latest.first_response_median_minutes * 10) / 10}m`
@@ -175,25 +175,25 @@ export default function SupportMetricsDashboard() {
 
         {/* Chart 1: Ticket Volume Trend */}
         <div className="card mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+          <h3 className="text-lg font-semibold mb-1">
             Ticket Volume / New vs Closed
           </h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm mb-4">
             Weekly ticket creation and resolution counts. Balancing new and closed tickets indicates healthy throughput.
           </p>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={ticketVolumeData}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
                 dataKey="week"
-                tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }}
+                tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
                 interval={0}
                 angle={-45}
                 textAnchor="end"
                 height={60}
               />
               <YAxis
-                tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
                 allowDecimals={false}
               />
               <Tooltip
@@ -215,18 +215,18 @@ export default function SupportMetricsDashboard() {
 
         {/* Chart 2: CSAT Score Trend */}
         <div className="card mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+          <h3 className="text-lg font-semibold mb-1">
             CSAT Score Trend
           </h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm mb-4">
             Customer satisfaction responses stacked by sentiment. Line overlay shows the positive-response percentage each week.
           </p>
           <ResponsiveContainer width="100%" height={340}>
             <ComposedChart data={csatData}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
                 dataKey="week"
-                tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }}
+                tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
                 interval={0}
                 angle={-45}
                 textAnchor="end"
@@ -234,13 +234,13 @@ export default function SupportMetricsDashboard() {
               />
               <YAxis
                 yAxisId="count"
-                tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
                 allowDecimals={false}
                 label={{
                   value: 'Responses',
                   angle: -90,
                   position: 'insideLeft',
-                  style: { fill: '#6b7280', fontSize: 12 },
+                  style: { fill: '#64748b', fontSize: 12 },
                 }}
               />
               <YAxis
@@ -248,12 +248,12 @@ export default function SupportMetricsDashboard() {
                 orientation="right"
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
-                tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
                 label={{
                   value: 'CSAT %',
                   angle: 90,
                   position: 'insideRight',
-                  style: { fill: '#6b7280', fontSize: 12 },
+                  style: { fill: '#64748b', fontSize: 12 },
                 }}
               />
               <Tooltip
@@ -302,31 +302,31 @@ export default function SupportMetricsDashboard() {
 
         {/* Chart 3: First Response Time Trend */}
         <div className="card mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+          <h3 className="text-lg font-semibold mb-1">
             First Response Time Trend
           </h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm mb-4">
             Average and median first-response time in minutes. Lower is better / fast first responses drive higher CSAT.
           </p>
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={frtData}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
                 dataKey="week"
-                tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }}
+                tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
                 interval={0}
                 angle={-45}
                 textAnchor="end"
                 height={60}
               />
               <YAxis
-                tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
                 tickFormatter={(v) => `${v}m`}
                 label={{
                   value: 'Minutes',
                   angle: -90,
                   position: 'insideLeft',
-                  style: { fill: '#6b7280', fontSize: 12 },
+                  style: { fill: '#64748b', fontSize: 12 },
                 }}
               />
               <Tooltip
@@ -371,71 +371,71 @@ export default function SupportMetricsDashboard() {
 
         {/* Data Table */}
         <div className="card overflow-hidden">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold mb-4">
             Weekly Breakdown ({data.length} weeks)
           </h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="dashboard-table">
+              <thead className="">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="">
                     Week
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="" style={{ textAlign: "right" }}>
                     New
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="" style={{ textAlign: "right" }}>
                     Closed
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="" style={{ textAlign: "right" }}>
                     CSAT +
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="" style={{ textAlign: "right" }}>
                     CSAT -
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="" style={{ textAlign: "right" }}>
                     CSAT %
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="" style={{ textAlign: "right" }}>
                     FRT Avg
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="" style={{ textAlign: "right" }}>
                     FRT Median
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody >
                 {data.map((row) => (
-                  <tr key={row.week_start} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tr key={row.week_start} >
+                    <td className="" style={{ fontWeight: 500, color: "var(--text-primary)" }}>
                       {formatWeekLabel(row.week_start)}
                       <span className="text-xs text-gray-400 ml-2">
                         {row.year_week}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-700 font-mono tabular-nums">
+                    <td className="" style={{ textAlign: "right", fontFamily: "var(--font-fira-code)" }}>
                       {row.new_tickets}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-700 font-mono tabular-nums">
+                    <td className="" style={{ textAlign: "right", fontFamily: "var(--font-fira-code)" }}>
                       {row.closed_tickets}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-green-600 font-mono tabular-nums">
+                    <td className="" style={{ textAlign: "right", color: "#10b981", fontFamily: "var(--font-fira-code)" }}>
                       {row.csat_positive}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-red-600 font-mono tabular-nums">
+                    <td className="" style={{ textAlign: "right", color: "#ef4444", fontFamily: "var(--font-fira-code)" }}>
                       {row.csat_negative}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium font-mono tabular-nums">
+                    <td className="" style={{ textAlign: "right", fontWeight: 500, fontFamily: "var(--font-fira-code)" }}>
                       {row.csat_score_pct != null
                         ? `${Math.round(row.csat_score_pct * 100)}%`
                         : '—'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-700 font-mono tabular-nums">
+                    <td className="" style={{ textAlign: "right", fontFamily: "var(--font-fira-code)" }}>
                       {row.first_response_avg_minutes != null
                         ? `${Math.round(row.first_response_avg_minutes * 10) / 10}m`
                         : '—'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-gray-700 font-mono tabular-nums">
+                    <td className="" style={{ textAlign: "right", fontFamily: "var(--font-fira-code)" }}>
                       {row.first_response_median_minutes != null
                         ? `${Math.round(row.first_response_median_minutes * 10) / 10}m`
                         : '—'}

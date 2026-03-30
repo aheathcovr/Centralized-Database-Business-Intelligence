@@ -111,7 +111,7 @@ export default function InMonthConversionPage() {
   if (loading && data.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-covr-blue"></div>
+        <div className="spinner"></div>
       </div>
     );
   }
@@ -120,8 +120,8 @@ export default function InMonthConversionPage() {
     <div>
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">In-Month Conversion</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold tracking-tight">In-Month Conversion</h1>
+        <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
           Track what percentage of expected deals actually close won within the month
         </p>
       </div>
@@ -141,7 +141,7 @@ export default function InMonthConversionPage() {
         {(dateRange || salesRepFilter.reps.length > 0 || salesRepFilter.groups.length > 0) && (
           <div className="flex items-end">
             <button
-              className="text-sm text-covr-blue hover:underline"
+              className="text-sm hover:underline" style={{ color: "var(--accent)" }}
               onClick={() => {
                 setDateRange(null);
                 setSalesRepFilter({ reps: [], groups: [] });
@@ -154,33 +154,33 @@ export default function InMonthConversionPage() {
       </div>
 
       {error && (
-        <div className="card mb-6 border-l-4 border-l-red-500">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="card mb-6" style={{ borderTop: "2px solid #ef4444" }}>
+          <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>
         </div>
       )}
 
       {loading && data.length > 0 && (
         <div className="flex justify-center mb-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-covr-blue"></div>
+          <div className="spinner"></div>
         </div>
       )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="card border-l-4 border-l-covr-blue">
-          <p className="text-sm text-gray-600 mb-1">Entering Expected</p>
+        <div className="card-glow">
+          <p className="text-[11px] uppercase tracking-widest mb-2">Entering Expected</p>
           <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">{totalEntering}</p>
         </div>
-        <div className="card border-l-4 border-l-green-500">
-          <p className="text-sm text-gray-600 mb-1">Won</p>
+        <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
+          <p className="text-[11px] uppercase tracking-widest mb-2">Won</p>
           <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">{totalWon}</p>
         </div>
-        <div className="card border-l-4 border-l-covr-teal">
-          <p className="text-sm text-gray-600 mb-1">Avg Conversion Rate</p>
+        <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
+          <p className="text-[11px] uppercase tracking-widest mb-2">Avg Conversion Rate</p>
           <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">{avgConversion}%</p>
         </div>
-        <div className="card border-l-4 border-l-purple-500">
-          <p className="text-sm text-gray-600 mb-1">Pushed</p>
+        <div className="card-glow" style={{ borderTopColor: "#8b5cf6" }}>
+          <p className="text-[11px] uppercase tracking-widest mb-2">Pushed</p>
           <p className="text-3xl font-bold text-purple-600 font-mono tabular-nums">{totalPushed}</p>
         </div>
       </div>
@@ -188,13 +188,13 @@ export default function InMonthConversionPage() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">Monthly Pipeline Outcomes</h3>
-          <p className="text-sm text-gray-500 mb-4">Won, Lost, and Pushed from expected pipeline</p>
+          <h3 className="text-lg font-semibold mb-1">Monthly Pipeline Outcomes</h3>
+          <p className="text-sm mb-4">Won, Lost, and Pushed from expected pipeline</p>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-fira-sans)' }} />
-              <YAxis tick={{ fontFamily: 'var(--font-fira-code)' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
+              <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
+              <YAxis tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
               <Tooltip />
               <Legend />
               <Bar dataKey="won" name="Won" fill="#059669" radius={[4, 4, 0, 0]} />
@@ -205,19 +205,19 @@ export default function InMonthConversionPage() {
         </div>
 
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">Conversion Rate Trend</h3>
-          <p className="text-sm text-gray-500 mb-4">Month-over-month in-month conversion percentage</p>
+          <h3 className="text-lg font-semibold mb-1">Conversion Rate Trend</h3>
+          <p className="text-sm mb-4">Month-over-month in-month conversion percentage</p>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-fira-sans)' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
+              <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
               <YAxis
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
-                tick={{ fontFamily: 'var(--font-fira-code)' }}
+                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
               />
               <Tooltip formatter={(value) => [`${value}%`, 'Conversion Rate']} />
-              <ReferenceLine y={50} stroke="#dc2626" strokeDasharray="4 4" label={{ value: '50% target', position: 'right', fill: '#dc2626', fontSize: 11 }} />
+              <ReferenceLine y={50} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '50% target', position: 'right', fill: '#ef4444', fontSize: 11 }} />
               <Line type="monotone" dataKey="conversionRate" name="Rate" stroke="#1e40af" strokeWidth={2} dot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
@@ -227,11 +227,11 @@ export default function InMonthConversionPage() {
       {data.length === 0 && !loading && (
         <div className="card">
           <div className="text-center py-8">
-            <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-12 h-12 mx-auto mb-3" style={{ color: "var(--text-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <h3 className="text-sm font-medium text-gray-700 mb-1">No Data Available</h3>
-            <p className="text-xs text-gray-400">
+            <h3 className="text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>No Data Available</h3>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               No in-month conversion data found for the selected filters.
               Try adjusting the date range or sales rep filter.
             </p>

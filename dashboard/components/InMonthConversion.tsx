@@ -199,7 +199,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-covr-blue" />
+        <div className="spinner" />
       </div>
     );
   }
@@ -222,7 +222,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
               d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
             />
           </svg>
-          <p className="text-red-600 font-medium mb-3">{error}</p>
+          <p className="font-medium mb-3" style={{ color: "#ef4444" }}>{error}</p>
           <button onClick={fetchData} className="btn-primary text-sm">
             Retry
           </button>
@@ -265,7 +265,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
         ────────────────────────────────────────────────────────────────── */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold">
               Start of Month — Pipeline Snapshot
             </h2>
             <span className="text-xs text-gray-400 bg-gray-100 rounded px-2 py-0.5">
@@ -275,7 +275,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
 
           {/* Summary table — pivot columns are months */}
           <div className="card mb-6 overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="dashboard-table">
               <thead>
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-white z-10">
@@ -291,9 +291,9 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody >
                 {/* Row: Expected in Month */}
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
                     <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: SOM_CHART_COLORS.expected }} />
                     Expected in Month
@@ -305,7 +305,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
                 {/* Row: Won */}
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
                     <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: SOM_CHART_COLORS.won }} />
                     Won
@@ -313,7 +313,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   {data.map((d) => (
                     <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
                       <div>{fmt(d.won_from_expected)}</div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
                         {d.entering_expected > 0
                           ? pct(d.won_from_expected / d.entering_expected)
                           : '—'}
@@ -322,7 +322,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
                 {/* Row: Lost */}
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
                     <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: SOM_CHART_COLORS.lost }} />
                     Lost
@@ -330,7 +330,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   {data.map((d) => (
                     <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
                       <div>{fmt(d.lost_from_expected)}</div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
                         {d.entering_expected > 0
                           ? pct(d.lost_from_expected / d.entering_expected)
                           : '—'}
@@ -339,7 +339,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
                 {/* Row: Pushed */}
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
                     <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: SOM_CHART_COLORS.pushed }} />
                     Pushed
@@ -347,7 +347,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   {data.map((d) => (
                     <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
                       <div>{fmt(d.pushed_from_expected)}</div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
                         {d.entering_expected > 0
                           ? pct(d.pushed_from_expected / d.entering_expected)
                           : '—'}
@@ -356,7 +356,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
                 {/* Row: % breakdown separator */}
-                <tr className="bg-gray-50">
+                <tr className="">
                   <td className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
                     % of Expected
                   </td>
@@ -365,7 +365,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
                 {/* Row: Win Rate */}
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 sticky left-0 bg-white pl-8">
                     Win Rate (Won / Resolved)
                   </td>
@@ -376,7 +376,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
                 {/* Row: Push Rate */}
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 sticky left-0 bg-white pl-8">
                     Push Rate (Pushed / Expected)
                   </td>
@@ -387,7 +387,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
                 {/* Row: Realized Rate */}
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 sticky left-0 bg-white pl-8">
                     Realized Rate (Won + Lost / Expected)
                   </td>
@@ -407,7 +407,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
               <h3 className="text-base font-semibold text-gray-900 mb-1">
                 Start of Month — Outcome Breakdown
               </h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm mb-4">
                 Deals that entered the month in Expected-to-Close status and their outcome
               </p>
               <ResponsiveContainer width="100%" height={320}>
@@ -415,26 +415,26 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis
                     dataKey="month"
-                    tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }}
+                    tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
                   />
                   <YAxis
-                    tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                    tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
                   />
                   <Tooltip content={<SomTooltip />} />
                   <Legend
                     wrapperStyle={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }}
                   />
                   <Bar dataKey="Expected" fill={SOM_CHART_COLORS.expected} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Expected" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#374151' }} />
+                    <LabelList dataKey="Expected" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }} />
                   </Bar>
                   <Bar dataKey="Won" fill={SOM_CHART_COLORS.won} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Won" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#374151' }} />
+                    <LabelList dataKey="Won" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }} />
                   </Bar>
                   <Bar dataKey="Lost" fill={SOM_CHART_COLORS.lost} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Lost" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#374151' }} />
+                    <LabelList dataKey="Lost" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }} />
                   </Bar>
                   <Bar dataKey="Pushed" fill={SOM_CHART_COLORS.pushed} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Pushed" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#374151' }} />
+                    <LabelList dataKey="Pushed" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -447,7 +447,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
         ────────────────────────────────────────────────────────────────── */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold">
               End of Month — Won Attribution
             </h2>
             <span className="text-xs text-gray-400 bg-gray-100 rounded px-2 py-0.5">
@@ -457,7 +457,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
 
           {/* Won attribution table — pivot columns are months */}
           <div className="card mb-6 overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="dashboard-table">
               <thead>
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-white z-10">
@@ -473,7 +473,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody >
                 {/* Row: Total Won */}
                 <tr className="bg-gray-50 font-semibold">
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 sticky left-0 bg-gray-50">
@@ -486,7 +486,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
                 {/* Row: Won from Expected */}
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white pl-8">
                     <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: WON_ORIGIN_COLORS.expected }} />
                     Was Expected
@@ -494,7 +494,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   {data.map((d) => (
                     <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
                       <div>{fmt(d.won_from_expected)}</div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
                         {d.won_total > 0
                           ? pct(d.won_from_expected / d.won_total)
                           : '—'}
@@ -503,7 +503,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
                 {/* Row: Pulled Forward / Created */}
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white pl-8">
                     <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: WON_ORIGIN_COLORS.pulledForward }} />
                     Pulled Forward / Created in Month
@@ -513,7 +513,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                     return (
                       <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
                         <div>{fmt(other)}</div>
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs" style={{ color: "var(--text-muted)" }}>
                           {d.won_total > 0
                             ? pct(other / d.won_total)
                             : '—'}
@@ -530,14 +530,14 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   {data.map((d) => (
                     <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
                       <div>{fmtDollar(d.won_amount_expected)}</div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
                         of {fmtDollar(d.entering_amount_expected)} expected
                       </div>
                     </td>
                   ))}
                 </tr>
                 {/* Row: Dollar Conversion */}
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 sticky left-0 bg-white pl-8">
                     Dollar Conversion Rate
                   </td>
@@ -565,7 +565,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
               <h3 className="text-base font-semibold text-gray-900 mb-1">
                 Won Deals — Origin Attribution
               </h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm mb-4">
                 Breakdown of closed-won deals: those that were Expected at start of month vs Pulled Forward / Created during the month
               </p>
               <ResponsiveContainer width="100%" height={280}>
@@ -573,10 +573,10 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis
                     dataKey="month"
-                    tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }}
+                    tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
                   />
                   <YAxis
-                    tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                    tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
                   />
                   <Tooltip content={<SomTooltip />} />
                   <Legend
@@ -595,7 +595,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
         ────────────────────────────────────────────────────────────────── */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold">
               Final Output — In-Month Conversion
             </h2>
             <span className="text-xs text-gray-400 bg-gray-100 rounded px-2 py-0.5">
@@ -625,7 +625,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                       }`
                     }
                   >
-                    <p className="text-sm text-gray-600 mb-1">{d.month_label}</p>
+                    <p className="text-[11px] uppercase tracking-widest mb-2">{d.month_label}</p>
                     <p className={
                       `text-3xl font-bold font-mono tabular-nums ${
                         isGood
@@ -637,7 +637,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                     }>
                       {conversionPct != null ? `${conversionPct}%` : '—'}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-[11px] mt-1.5">
                       {fmt(d.won_from_expected)} won / {fmt(d.entering_expected)} expected
                     </p>
                   </div>
@@ -648,7 +648,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
 
           {/* Full pivot table — all months */}
           <div className="card mb-6 overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="dashboard-table">
               <thead>
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-white z-10">
@@ -664,8 +664,8 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                <tr className="hover:bg-gray-50">
+              <tbody >
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
                     Entering Expected
                   </td>
@@ -675,7 +675,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                     </td>
                   ))}
                 </tr>
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
                     Won from Expected
                   </td>
@@ -685,7 +685,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                     </td>
                   ))}
                 </tr>
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
                     Lost from Expected
                   </td>
@@ -695,14 +695,14 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                     </td>
                   ))}
                 </tr>
-                <tr className="hover:bg-gray-50">
+                <tr >
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
                     Pushed from Expected
                   </td>
                   {data.map((d) => (
                     <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
                       <div>{fmt(d.pushed_from_expected)}</div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
                         {fmt(d.pushed_expected_to_expected)} same · {fmt(d.pushed_expected_to_later)} later
                       </div>
                     </td>
@@ -740,7 +740,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
               <h3 className="text-base font-semibold text-gray-900 mb-1">
                 In-Month Conversion Trend
               </h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm mb-4">
                 % Won vs Entering Expected — higher is better. Red reference line at 30%.
               </p>
               <ResponsiveContainer width="100%" height={260}>
@@ -748,12 +748,12 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis
                     dataKey="month"
-                    tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }}
+                    tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
                   />
                   <YAxis
                     domain={[0, 100]}
                     tickFormatter={(v) => `${v}%`}
-                    tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                    tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
                   />
                   <Tooltip
                     formatter={(value: any) => [
@@ -786,7 +786,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                       dataKey="conversion"
                       position="top"
                       formatter={(v: number | null) => (v != null ? `${v}%` : '')}
-                      style={{ fontFamily: 'var(--font-fira-code)', fontSize: 11, fill: '#374151' }}
+                      style={{ fontFamily: 'var(--font-fira-code)', fontSize: 11, fill: '#94a3b8' }}
                     />
                   </Bar>
                 </BarChart>

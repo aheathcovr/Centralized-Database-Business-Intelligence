@@ -16,7 +16,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: 'var(--bg-canvas)' }}>
       <Sidebar />
       <div className="transition-all duration-200" style={{ marginLeft: 'var(--sidebar-width)' }}>
         <DashboardHeader user={session.user} />

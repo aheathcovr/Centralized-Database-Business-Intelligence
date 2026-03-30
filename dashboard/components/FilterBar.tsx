@@ -19,17 +19,18 @@ export default function FilterBar({ selectedTimeRange, onTimeRangeChange, select
   return (
     <div className="flex flex-wrap items-center gap-4 mb-6">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-700">Time Range:</label>
-        <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+        <label className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Time Range:</label>
+        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-default)' }}>
           {timeRanges.map((tr) => (
             <button
               key={tr.value}
               onClick={() => onTimeRangeChange(tr.value)}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                selectedTimeRange === tr.value
-                  ? 'bg-covr-blue text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
+              className="px-4 py-2 text-sm font-medium transition-all duration-200"
+              style={{
+                background: selectedTimeRange === tr.value ? 'var(--accent-glow-strong)' : 'transparent',
+                color: selectedTimeRange === tr.value ? 'var(--accent)' : 'var(--text-muted)',
+                borderRight: '1px solid var(--border-subtle)',
+              }}
             >
               {tr.label}
             </button>
@@ -39,7 +40,7 @@ export default function FilterBar({ selectedTimeRange, onTimeRangeChange, select
 
       {reps && onRepChange && (
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">Rep:</label>
+          <label className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Rep:</label>
           <select
             value={selectedRep || 'all'}
             onChange={(e) => onRepChange(e.target.value)}

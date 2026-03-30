@@ -179,7 +179,7 @@ export default function DateRangePicker({
 
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>
         Date Range
       </label>
 
@@ -278,7 +278,7 @@ export default function DateRangePicker({
 
       {value && !isCustom && (
         <div className="flex items-center justify-between mt-1.5">
-          <span className="text-xs text-gray-400">
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
             {formatDateDisplay(new Date(value.startDate + 'T00:00:00'))} — {formatDateDisplay(new Date(value.endDate + 'T00:00:00'))}
           </span>
           <button

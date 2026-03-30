@@ -8,17 +8,17 @@ interface KpiCardProps {
   icon?: ReactNode;
 }
 
-export default function KpiCard({ label, value, color = 'covr-blue', subtext, icon }: KpiCardProps) {
+export default function KpiCard({ label, value, color = '#22d3ee', subtext, icon }: KpiCardProps) {
   return (
-    <div className="card border-l-4" style={{ borderLeftColor: color.startsWith('#') ? color : undefined }}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-sm text-gray-600">{label}</p>
-        {icon && <span className="text-gray-400">{icon}</span>}
+    <div className="card-glow" style={{ borderTopColor: color }}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] uppercase tracking-widest font-medium" style={{ color: 'var(--text-muted)' }}>{label}</p>
+        {icon && <span style={{ color: 'var(--text-muted)' }}>{icon}</span>}
       </div>
-      <p className={`text-3xl font-bold font-mono tabular-nums`} style={{ color: color.startsWith('#') ? color : undefined }}>
+      <p className="text-3xl font-bold font-mono tabular-nums" style={{ color: color, fontFamily: 'var(--font-fira-code), monospace' }}>
         {value}
       </p>
-      {subtext && <p className="text-xs text-gray-400 mt-1">{subtext}</p>}
+      {subtext && <p className="text-[11px] mt-1.5" style={{ color: 'var(--text-muted)' }}>{subtext}</p>}
     </div>
   );
 }

@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { signOut } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -39,25 +38,18 @@ interface Stats extends TimelineStats {
   // Inherits all fields from timeline-utils
 }
 
-interface DashboardProps {
-  user: {
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-  };
-}
 
-const COLORS = ['#1e40af', '#0d9488', '#059669', '#7c3aed', '#dc2626'];
+const COLORS = ['#22d3ee', '#0891b2', '#10b981', '#8b5cf6', '#ef4444'];
 
 const STATUS_COLORS: Record<string, string> = {
-  Active: '#059669',
-  Churned: '#dc2626',
-  Implementation: '#1e40af',
-  Stalled: '#d97706',
+  Active: '#10b981',
+  Churned: '#ef4444',
+  Implementation: '#3b82f6',
+  Stalled: '#f59e0b',
   Offboarding: '#64748b',
 };
 
-export default function Dashboard({ user }: DashboardProps) {
+export default function Dashboard() {
   const [corporations, setCorporations] = useState<Corporation[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -262,15 +254,15 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const dataFreshness = timelineFilteredStats?.data_loaded_at
     ? (() => {
-      try {
-        return new Date(timelineFilteredStats.data_loaded_at).toLocaleString('en-US', {
-          month: 'short', day: 'numeric', year: 'numeric',
-          hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
-        });
-      } catch {
-        return null;
-      }
-    })()
+        try {
+          return new Date(timelineFilteredStats.data_loaded_at).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+          });
+        } catch {
+          return null;
+        }
+      })()
     : null;
 
   const timelineLabel = getTimelineLabel(timeline);
@@ -278,7 +270,7 @@ export default function Dashboard({ user }: DashboardProps) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-covr-blue"></div>
+        <div className="spinner"></div>
       </div>
     );
   }
@@ -302,58 +294,47 @@ export default function Dashboard({ user }: DashboardProps) {
   return (
     <div>
       {/* Page Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Pipeline Overview</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Corporation penetration metrics and status distribution
-            {dataFreshness && (
-              <span className="ml-2 text-gray-400">· Data as of {dataFreshness}</span>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600">{user?.email}</span>
-          <button
-            onClick={() => signOut()}
-            className="btn-secondary text-sm"
-          >
-            Sign Out
-          </button>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold tracking-tight">Pipeline Overview</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+          Corporation penetration metrics and status distribution
+          {dataFreshness && (
+            <span className="ml-2" style={{ color: "var(--text-muted)" }}>· Data as of {dataFreshness}</span>
+          )}
+        </p>
       </div>
 
       <div className="max-w-7xl mx-auto">
         {/* Summary Cards */}
         {timelineFilteredStats && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-            <div className="card border-l-4 border-l-covr-blue">
-              <p className="text-sm text-gray-600 mb-1">Total Corporations</p>
+            <div className="card-glow">
+              <p className="text-[11px] uppercase tracking-widest mb-2">Total Corporations</p>
               <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">
                 {timelineFilteredStats.total_corporations}
               </p>
             </div>
-            <div className="card border-l-4 border-l-green-500">
-              <p className="text-sm text-gray-600 mb-1">Active</p>
+            <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
+              <p className="text-[11px] uppercase tracking-widest mb-2">Active</p>
               <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">
                 {timelineFilteredStats.active_status_count}
               </p>
             </div>
-            <div className="card border-l-4 border-l-covr-blue">
-              <p className="text-sm text-gray-600 mb-1">Weighted Penetration</p>
+            <div className="card-glow">
+              <p className="text-[11px] uppercase tracking-widest mb-2">Weighted Penetration</p>
               <p className="text-3xl font-bold text-covr-blue font-mono tabular-nums">
                 {weightedPenetration}%
               </p>
-              <p className="text-xs text-gray-400 mt-1">by facility count</p>
+              <p className="text-[11px] mt-1.5">by facility count</p>
             </div>
-            <div className="card border-l-4 border-l-gray-400">
-              <p className="text-sm text-gray-600 mb-1">Total Facilities</p>
+            <div className="card">
+              <p className="text-[11px] uppercase tracking-widest mb-2">Total Facilities</p>
               <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">
                 {timelineFilteredStats.total_facilities?.toLocaleString() || 0}
               </p>
             </div>
-            <div className="card border-l-4 border-l-covr-teal">
-              <p className="text-sm text-gray-600 mb-1">Definitive Healthcare</p>
+            <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
+              <p className="text-[11px] uppercase tracking-widest mb-2">Definitive Healthcare</p>
               <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">
                 {timelineFilteredStats.total_facilities_in_dh?.toLocaleString() || 0}
               </p>
@@ -364,33 +345,33 @@ export default function Dashboard({ user }: DashboardProps) {
         {/* GTM Penetration Tiers — Active accounts only */}
         {timelineFilteredCorporations.length > 0 && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-lg shadow-md p-5 border-l-4 border-l-red-500">
+            <div className="card p-5" style={{ borderTop: "2px solid #ef4444" }}>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Below 50% — Active</p>
               <p className="text-2xl font-bold text-red-600 font-mono tabular-nums">
-                {tierBelow50.length}<span className="text-sm font-normal text-gray-400 ml-1">corps</span>
+                {tierBelow50.length}<span className="text-sm font-normal ml-1">corps</span>
               </p>
-              <p className="text-sm text-gray-500 font-mono mt-1">{facilitiesBelow50.toLocaleString()} facilities</p>
+              <p className="text-xs mt-1">{facilitiesBelow50.toLocaleString()} facilities</p>
             </div>
-            <div className="bg-white rounded-lg shadow-md p-5 border-l-4 border-l-amber-500">
+            <div className="card p-5" style={{ borderTop: "2px solid #f59e0b" }}>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">50–79% — Active</p>
               <p className="text-2xl font-bold text-amber-600 font-mono tabular-nums">
-                {tierMid.length}<span className="text-sm font-normal text-gray-400 ml-1">corps</span>
+                {tierMid.length}<span className="text-sm font-normal ml-1">corps</span>
               </p>
-              <p className="text-sm text-gray-500 font-mono mt-1">{facilitiesMid.toLocaleString()} facilities</p>
+              <p className="text-xs mt-1">{facilitiesMid.toLocaleString()} facilities</p>
             </div>
-            <div className="bg-white rounded-lg shadow-md p-5 border-l-4 border-l-green-500">
+            <div className="card p-5" style={{ borderTop: "2px solid #10b981" }}>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">≥ 80% — Active</p>
               <p className="text-2xl font-bold text-green-600 font-mono tabular-nums">
-                {tierAbove80.length}<span className="text-sm font-normal text-gray-400 ml-1">corps</span>
+                {tierAbove80.length}<span className="text-sm font-normal ml-1">corps</span>
               </p>
-              <p className="text-sm text-gray-500 font-mono mt-1">{facilitiesAbove80.toLocaleString()} facilities</p>
+              <p className="text-xs mt-1">{facilitiesAbove80.toLocaleString()} facilities</p>
             </div>
-            <div className="bg-white rounded-lg shadow-md p-5 border-l-4 border-l-orange-400">
+            <div className="card p-5" style={{ borderTop: "2px solid #f97316" }}>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Expansion to 80%</p>
               <p className="text-2xl font-bold text-orange-600 font-mono tabular-nums">
                 {expansionOpportunity.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-500 mt-1">facilities gap in active accounts</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>facilities gap in active accounts</p>
             </div>
           </div>
         )}
@@ -398,24 +379,24 @@ export default function Dashboard({ user }: DashboardProps) {
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-lg font-semibold mb-4">
               Customer Status Distribution
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={taskStatusData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontFamily: 'var(--font-fira-sans)' }} />
-                <YAxis tick={{ fontFamily: 'var(--font-fira-code)' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
+                <XAxis dataKey="name" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
+                <YAxis tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
                 <Tooltip />
-                <Bar dataKey="count" fill="#1e40af">
-                  <LabelList dataKey="count" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 12, fill: '#374151' }} />
+                <Bar dataKey="count" fill="#22d3ee">
+                  <LabelList dataKey="count" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 12, fill: '#94a3b8' }} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-lg font-semibold mb-4">
               Product Mix
             </h3>
             <ResponsiveContainer width="100%" height={300}>
@@ -446,20 +427,20 @@ export default function Dashboard({ user }: DashboardProps) {
         {/* Product Depth vs. Penetration */}
         {productDepthData.length > 0 && (
           <div className="card mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+            <h3 className="text-lg font-semibold mb-1">
               Product Depth vs. Facility Penetration
             </h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm mb-4">
               Average facility penetration rate by number of Covr products — Active accounts only. Tests whether broader product adoption correlates with deeper wallet share.
             </p>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={productDepthData} barSize={80}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="products" tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 13 }} />
+                <XAxis dataKey="products" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 13 }} />
                 <YAxis
                   domain={[0, 100]}
                   tickFormatter={(v) => `${v}%`}
-                  tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                  tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
                 />
                 <Tooltip
                   formatter={(value) => [`${value}%`, 'Avg Penetration']}
@@ -467,21 +448,21 @@ export default function Dashboard({ user }: DashboardProps) {
                     if (!props.active || !props.payload?.length) return null;
                     const d = props.payload[0].payload as { products: string; penetration: number; count: number };
                     return (
-                      <div className="bg-white border border-gray-200 rounded shadow-lg p-3 text-sm">
-                        <p className="font-semibold text-gray-900 mb-1">{d.products}</p>
-                        <p className="text-gray-600">Avg penetration: <span className="font-mono font-medium">{d.penetration}%</span></p>
-                        <p className="text-gray-500 text-xs mt-1">{d.count} active accounts</p>
+                      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: "0.5rem", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", padding: "0.75rem", fontSize: "0.8125rem" }}>
+                        <p style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.25rem" }}>{d.products}</p>
+                        <p style={{ color: "var(--text-secondary)" }}>Avg penetration: <span className="font-mono font-medium">{d.penetration}%</span></p>
+                        <p style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginTop: "0.25rem" }}>{d.count} active accounts</p>
                       </div>
                     );
                   }}
                 />
-                <ReferenceLine y={80} stroke="#dc2626" strokeDasharray="4 4" label={{ value: '80% target', position: 'right', fill: '#dc2626', fontSize: 11 }} />
-                <Bar dataKey="penetration" fill="#1e40af" radius={[4, 4, 0, 0]}>
+                <ReferenceLine y={80} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '80% target', position: 'right', fill: '#ef4444', fontSize: 11 }} />
+                <Bar dataKey="penetration" fill="#22d3ee" radius={[4, 4, 0, 0]}>
                   <LabelList
                     dataKey="penetration"
                     position="top"
                     formatter={(v: number) => `${v}%`}
-                    style={{ fontFamily: 'var(--font-fira-code)', fontSize: 13, fill: '#374151', fontWeight: 600 }}
+                    style={{ fontFamily: 'var(--font-fira-code)', fontSize: 13, fill: '#94a3b8', fontWeight: 600 }}
                   />
                 </Bar>
               </BarChart>
@@ -491,24 +472,24 @@ export default function Dashboard({ user }: DashboardProps) {
 
         {/* Penetration Chart */}
         <div className="card mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+          <h3 className="text-lg font-semibold mb-1">
             GTM Priority — Lowest Penetration (Active &amp; In Implementation)
           </h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm mb-4">
             Accounts furthest from the 80% target — shows active/implementation corps for selected timeline
           </p>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={penetrationData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-              <YAxis dataKey="name" type="category" width={160} tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }} />
+              <YAxis dataKey="name" type="category" width={160} tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
               <Tooltip
                 formatter={(value, name) => {
                   if (name === 'penetration') return [`${value}%`, 'Penetration'];
                   return [value, name];
                 }}
               />
-              <ReferenceLine x={80} stroke="#dc2626" strokeDasharray="4 4" label={{ value: '80% target', position: 'top', fill: '#dc2626', fontSize: 11 }} />
+              <ReferenceLine x={80} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '80% target', position: 'top', fill: '#ef4444', fontSize: 11 }} />
               <Bar dataKey="penetration">
                 {penetrationData.map((entry, i) => (
                   <Cell
@@ -523,15 +504,15 @@ export default function Dashboard({ user }: DashboardProps) {
 
         {/* Facilities by Corporation Status */}
         <div className="card mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+          <h3 className="text-lg font-semibold mb-1">
             Facilities by Corporation Status
           </h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm mb-4">
             Total facility count per status — showing Definitive Healthcare coverage vs. unmatched
           </p>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={facilitiesByStatusData}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis dataKey="status" />
               <YAxis tickFormatter={(v) => v.toLocaleString()} />
               <Tooltip
@@ -545,31 +526,31 @@ export default function Dashboard({ user }: DashboardProps) {
                   value === 'matched' ? 'In Definitive Healthcare' : 'Not Matched'
                 }
               />
-              <Bar dataKey="matched" stackId="a" fill="#0d9488" />
-              <Bar dataKey="unmatched" stackId="a" fill="#e5e7eb" />
+              <Bar dataKey="matched" stackId="a" fill="#0891b2" />
+              <Bar dataKey="unmatched" stackId="a" fill="rgba(148,163,184,0.15)" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Opportunity Matrix */}
         <div className="card mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+          <h3 className="text-lg font-semibold mb-1">
             Opportunity Matrix
           </h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm mb-4">
             Each dot is a corporation, sized by total facilities. Dashed lines show medians. &nbsp;
-            <span className="text-gray-400">Top-right: large accounts with upside · Bottom-right: mature/saturated · Top-left: growth targets · Bottom-left: small accounts</span>
+            <span className="" style={{ color: "var(--text-muted)" }}>Top-right: large accounts with upside · Bottom-right: mature/saturated · Top-left: growth targets · Bottom-left: small accounts</span>
           </p>
           <ResponsiveContainer width="100%" height={420}>
             <ScatterChart margin={{ top: 20, right: 80, bottom: 50, left: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
                 type="number"
                 dataKey="won"
                 name="Facilities Won"
                 label={{ value: 'Facilities Won (Customers)', position: 'insideBottom', offset: -15, style: { fill: '#6b7280', fontSize: 12 } }}
                 tickFormatter={(v: number) => v.toLocaleString()}
-                tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
               />
               <YAxis
                 type="number"
@@ -577,7 +558,7 @@ export default function Dashboard({ user }: DashboardProps) {
                 name="Facilities Remaining"
                 label={{ value: 'Facilities Not Yet Won', angle: -90, position: 'insideLeft', offset: 15, style: { fill: '#6b7280', fontSize: 12 } }}
                 tickFormatter={(v: number) => v.toLocaleString()}
-                tick={{ fontFamily: 'var(--font-fira-code)', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
               />
               <ZAxis type="number" dataKey="total" range={[40, 500]} name="Total Facilities" />
               <Tooltip
@@ -588,38 +569,38 @@ export default function Dashboard({ user }: DashboardProps) {
                     name: string; won: number; remaining: number; total: number; status: string;
                   };
                   return (
-                    <div className="bg-white border border-gray-200 rounded shadow-lg p-3 text-sm max-w-xs">
-                      <p className="font-semibold text-gray-900 mb-1">{d.name}</p>
-                      <p className="text-gray-600">Won: <span className="font-mono font-medium">{d.won.toLocaleString()}</span></p>
-                      <p className="text-gray-600">Remaining: <span className="font-mono font-medium">{d.remaining.toLocaleString()}</span></p>
-                      <p className="text-gray-600">Total: <span className="font-mono font-medium">{d.total.toLocaleString()}</span></p>
-                      <p className="text-xs text-gray-400 mt-1">{d.status}</p>
+                    <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: "0.5rem", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", padding: "0.75rem", fontSize: "0.8125rem", maxWidth: "20rem" }}>
+                      <p style={{ fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.25rem" }}>{d.name}</p>
+                      <p style={{ color: "var(--text-secondary)" }}>Won: <span className="font-mono font-medium">{d.won.toLocaleString()}</span></p>
+                      <p style={{ color: "var(--text-secondary)" }}>Remaining: <span className="font-mono font-medium">{d.remaining.toLocaleString()}</span></p>
+                      <p style={{ color: "var(--text-secondary)" }}>Total: <span className="font-mono font-medium">{d.total.toLocaleString()}</span></p>
+                      <p className="text-[11px] mt-1.5">{d.status}</p>
                     </div>
                   );
                 }}
               />
               <ReferenceLine
                 x={wonMedian}
-                stroke="#9ca3af"
+                stroke="rgba(148,163,184,0.3)"
                 strokeDasharray="5 3"
-                label={{ value: `median (${wonMedian.toLocaleString()})`, position: 'top', fontSize: 10, fill: '#9ca3af' }}
+                label={{ value: `median (${wonMedian.toLocaleString()})`, position: 'top', fontSize: 10, fill: '#64748b' }}
               />
               <ReferenceLine
                 y={remainingMedian}
-                stroke="#9ca3af"
+                stroke="rgba(148,163,184,0.3)"
                 strokeDasharray="5 3"
-                label={{ value: `median (${remainingMedian.toLocaleString()})`, position: 'insideBottomRight', fontSize: 10, fill: '#9ca3af' }}
+                label={{ value: `median (${remainingMedian.toLocaleString()})`, position: 'insideBottomRight', fontSize: 10, fill: '#64748b' }}
               />
               <Scatter data={scatterData} fillOpacity={0.75}>
                 {scatterData.map((entry, i) => (
-                  <Cell key={i} fill={STATUS_COLORS[entry.status] || '#64748b'} />
+                  <Cell key={i} fill={STATUS_COLORS[entry.status] || '#64748b'} fillOpacity={0.85} />
                 ))}
               </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
           <div className="flex flex-wrap gap-x-6 gap-y-2 mt-3 justify-center">
             {Object.entries(STATUS_COLORS).map(([label, color]) => (
-              <span key={label} className="flex items-center gap-1.5 text-xs text-gray-600">
+              <span key={label} className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                 {label}
               </span>
@@ -639,7 +620,7 @@ export default function Dashboard({ user }: DashboardProps) {
               onChange={setSalesRepFilter}
             />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>
                 Task Status
               </label>
               <select
@@ -656,7 +637,7 @@ export default function Dashboard({ user }: DashboardProps) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>
                 Product
               </label>
               <select
@@ -673,7 +654,7 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
           <div className="flex gap-4">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>
                 Search
               </label>
               <input
@@ -707,55 +688,55 @@ export default function Dashboard({ user }: DashboardProps) {
 
         {/* Corporation Table */}
         <div className="card overflow-hidden">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold mb-4">
             Corporations ({filteredCorporations.length})
           </h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="dashboard-table">
+              <thead className="">
                 <tr>
                   <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    className=""
                     onClick={() => handleSort('corporation_name')}
                   >
                     Corporation{sortIcon('corporation_name')}
                   </th>
                   <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    className=""
                     onClick={() => handleSort('task_status_label')}
                   >
                     Status{sortIcon('task_status_label')}
                   </th>
                   <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    className=""
                     onClick={() => handleSort('product_mix')}
                   >
                     Product Mix{sortIcon('product_mix')}
                   </th>
                   <th
-                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    className="" style={{ textAlign: "right" }}
                     onClick={() => handleSort('total_facilities')}
                   >
                     Facilities{sortIcon('total_facilities')}
                   </th>
                   <th
-                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    className="" style={{ textAlign: "right" }}
                     onClick={() => handleSort('facilities_in_dh')}
                   >
                     Definitive Healthcare{sortIcon('facilities_in_dh')}
                   </th>
                   <th
-                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                    className="" style={{ textAlign: "right" }}
                     onClick={() => handleSort('penetration_rate')}
                   >
                     Penetration{sortIcon('penetration_rate')}
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody >
                 {sortedCorporations.map((corp) => (
-                  <tr key={corp.clickup_task_id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={corp.clickup_task_id} >
+                    <td className="">
                       <div className="text-sm font-medium text-gray-900">
                         {corp.corporation_name}
                       </div>
@@ -765,7 +746,7 @@ export default function Dashboard({ user }: DashboardProps) {
                             href={corp.hubspot_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-covr-blue hover:underline"
+                            className="text-xs hover:underline" style={{ color: "var(--accent)" }}
                           >
                             View in HubSpot
                           </a>
@@ -774,54 +755,56 @@ export default function Dashboard({ user }: DashboardProps) {
                           href={`https://app.clickup.com/901302721443/v/li/901302721443/${corp.clickup_task_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-purple-600 hover:underline"
+                          className="text-xs hover:underline" style={{ color: "#8b5cf6" }}
                         >
                           View in ClickUp
                         </a>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="">
                       <div className="flex flex-col gap-1">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${corp.task_status_label === 'Active'
-                            ? 'bg-green-100 text-green-800'
-                            : corp.task_status_label === 'Churned'
-                              ? 'bg-red-100 text-red-800'
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${
+                            corp.task_status_label === 'Active'
+                              ? 'badge-active'
+                              : corp.task_status_label === 'Churned'
+                              ? 'badge-churned'
                               : corp.task_status_label === 'Implementation'
-                                ? 'bg-blue-100 text-blue-800'
-                                : corp.task_status_label === 'Stalled'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-gray-100 text-gray-800'
-                            }`}
+                              ? 'badge-implementation'
+                              : corp.task_status_label === 'Stalled'
+                              ? 'badge-stalled'
+                              : 'badge-offboarding'
+                          }`}
                         >
                           {corp.task_status_label}
                         </span>
                         {corp.customer_type_label && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                             Type: {corp.customer_type_label}
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="">
                       {corp.product_mix}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                    <td className="" style={{ textAlign: "right" }}>
                       {corp.total_facilities?.toLocaleString() || 0}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                    <td className="" style={{ textAlign: "right" }}>
                       {corp.facilities_in_dh?.toLocaleString() || 0}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <td className="" style={{ textAlign: "right" }}>
                       <div className="flex items-center justify-end gap-2">
                         <div className="w-16 bg-gray-200 rounded-full h-2">
                           <div
-                            className={`h-2 rounded-full ${(corp.penetration_rate || 0) >= 0.8
-                              ? 'bg-green-500'
-                              : (corp.penetration_rate || 0) >= 0.5
-                                ? 'bg-yellow-500'
+                            className={`h-2 rounded-full ${
+                              (corp.penetration_rate || 0) >= 0.8
+                                ? 'bg-emerald-500'
+                                : (corp.penetration_rate || 0) >= 0.5
+                                ? 'bg-amber-500'
                                 : 'bg-red-500'
-                              }`}
+                            }`}
                             style={{
                               width: `${Math.min(
                                 (corp.penetration_rate || 0) * 100,

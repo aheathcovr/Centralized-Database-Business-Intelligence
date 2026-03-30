@@ -29,7 +29,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${firaSans.variable} ${firaCode.variable}`}>
-      <body className="font-sans">
+      <body className="font-sans antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>
