@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { signOut } from 'next-auth/react';
 import {
   BarChart,
   Bar,
@@ -38,6 +39,13 @@ interface Stats extends TimelineStats {
   // Inherits all fields from timeline-utils
 }
 
+interface DashboardProps {
+  user: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
+}
 
 const COLORS = ['#1e40af', '#0d9488', '#059669', '#7c3aed', '#dc2626'];
 
@@ -49,7 +57,7 @@ const STATUS_COLORS: Record<string, string> = {
   Offboarding: '#64748b',
 };
 
-export default function Dashboard() {
+export default function Dashboard({ user }: DashboardProps) {
   const [corporations, setCorporations] = useState<Corporation[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -254,15 +262,15 @@ export default function Dashboard() {
 
   const dataFreshness = timelineFilteredStats?.data_loaded_at
     ? (() => {
-        try {
-          return new Date(timelineFilteredStats.data_loaded_at).toLocaleString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric',
-            hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
-          });
-        } catch {
-          return null;
-        }
-      })()
+      try {
+        return new Date(timelineFilteredStats.data_loaded_at).toLocaleString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric',
+          hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+        });
+      } catch {
+        return null;
+      }
+    })()
     : null;
 
   const timelineLabel = getTimelineLabel(timeline);
@@ -294,14 +302,25 @@ export default function Dashboard() {
   return (
     <div>
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Pipeline Overview</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Corporation penetration metrics and status distribution
-          {dataFreshness && (
-            <span className="ml-2 text-gray-400">· Data as of {dataFreshness}</span>
-          )}
-        </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Pipeline Overview</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Corporation penetration metrics and status distribution
+            {dataFreshness && (
+              <span className="ml-2 text-gray-400">· Data as of {dataFreshness}</span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-600">{user?.email}</span>
+          <button
+            onClick={() => signOut()}
+            className="btn-secondary text-sm"
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto">
@@ -764,17 +783,16 @@ export default function Dashboard() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col gap-1">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${
-                            corp.task_status_label === 'Active'
-                              ? 'bg-green-100 text-green-800'
-                              : corp.task_status_label === 'Churned'
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${corp.task_status_label === 'Active'
+                            ? 'bg-green-100 text-green-800'
+                            : corp.task_status_label === 'Churned'
                               ? 'bg-red-100 text-red-800'
                               : corp.task_status_label === 'Implementation'
-                              ? 'bg-blue-100 text-blue-800'
-                              : corp.task_status_label === 'Stalled'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
+                                ? 'bg-blue-100 text-blue-800'
+                                : corp.task_status_label === 'Stalled'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-gray-100 text-gray-800'
+                            }`}
                         >
                           {corp.task_status_label}
                         </span>
@@ -798,13 +816,12 @@ export default function Dashboard() {
                       <div className="flex items-center justify-end gap-2">
                         <div className="w-16 bg-gray-200 rounded-full h-2">
                           <div
-                            className={`h-2 rounded-full ${
-                              (corp.penetration_rate || 0) >= 0.8
-                                ? 'bg-green-500'
-                                : (corp.penetration_rate || 0) >= 0.5
+                            className={`h-2 rounded-full ${(corp.penetration_rate || 0) >= 0.8
+                              ? 'bg-green-500'
+                              : (corp.penetration_rate || 0) >= 0.5
                                 ? 'bg-yellow-500'
                                 : 'bg-red-500'
-                            }`}
+                              }`}
                             style={{
                               width: `${Math.min(
                                 (corp.penetration_rate || 0) * 100,
