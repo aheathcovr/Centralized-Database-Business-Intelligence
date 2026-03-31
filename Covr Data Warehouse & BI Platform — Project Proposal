@@ -228,7 +228,7 @@ erDiagram
 
     CLICKUP ||--o{ HUBSPOT : "covr_id"
     CLICKUP ||--o{ INTERCOM : "covr_id"
-    CLICKUP ||--o{ QUICKBOOKS : "covr_id (custom connector req'd)"
+    CLICKUP ||--o{ QUICKBOOKS : "covr_id (custom field setup req'd)"
     CLICKUP ||--o{ POSTHOG : "covr_id"
     CLICKUP ||--o{ DEFINITIVE : "facility name match"
 ```
@@ -243,17 +243,33 @@ erDiagram
 
 **Problem:** The QuickBooks-to-ClickUp match rate for active/onboarding records is currently 3.8% (79 of 2,105 records), despite QuickBooks containing 1,255 active customers. There are two compounding issues:
 
-1. **The pre-built Airbyte QuickBooks connector does not sync custom fields.** QuickBooks has a "Unique ID" custom field on customer records that is the intended `covr_id` join key. This field is not exposed by Airbyte's standard connector, meaning it never reaches BigQuery regardless of whether values have been entered.
+1. **The "Unique ID" custom field has not been defined in QuickBooks.** Inspecting the synced data confirms that no custom fields have been created in this QBO account — the `CustomField` column is entirely absent from `Quickbooks_Airbyte.customers` in BigQuery, and is present but empty (zero populated records) on transaction tables like `invoices`. The field needs to be defined in QBO before it can be populated or synced.
 
-2. **The existing `company_join_keys` matching was done on a limited basis.** The current join table only reflects a small subset of the possible name-based matches between ClickUp and QuickBooks.
+2. **The existing `company_join_keys` matching is incomplete.** The current join table only reflects a small subset of possible matches. An exact name match between `ClickUp_AirbyteCustom.task.name` and `Quickbooks_Airbyte.customers.CompanyName` already yields approximately 658 potential matches (~31%) that could be linked today without any data entry.
 
-**Interim Solution — Name Matching:** An exact match on facility name between `ClickUp_AirbyteCustom.task.name` and `Quickbooks_Airbyte.customers.CompanyName` yields approximately 658 potential matches (~31% of active/onboarding records) that can be linked today without any additional data entry. This match should be incorporated into the `company_join_keys` rebuild as a stopgap.
+**How QuickBooks custom fields work in Airbyte/BigQuery:** The standard Airbyte QuickBooks connector does expose custom fields — no custom connector is needed. Once a custom field is defined in QBO, the API returns it as a `CustomField` JSON array on supported streams including `customers`. The `CustomField` column will appear automatically in BigQuery on the next sync. Extracting the value requires unnesting in SQL:
 
-**Long-Term Solution — Custom Airbyte Connector:** Build a custom Airbyte source connector for QuickBooks that extends the standard connector to include custom fields in the `customers` stream. Once the "Unique ID" field is flowing into BigQuery, the matching logic in `company_join_keys` can be updated to join on `covr_id` directly, and the name-based fallback can be retained for records where the custom field is not yet populated.
+```sql
+SELECT
+  c.Id,
+  c.DisplayName,
+  JSON_EXTRACT_SCALAR(cf, '$.StringValue') AS covr_id
+FROM `Quickbooks_Airbyte.customers` c,
+  UNNEST(JSON_EXTRACT_ARRAY(c.CustomField)) AS cf
+WHERE JSON_EXTRACT_SCALAR(cf, '$.Name') = 'Unique ID'
+```
 
-**Owner:** Engineering (connector build), Austin (coordination)
+**Interim Solution — Name Matching:** Rebuild `company_join_keys` to include exact name-based matches between `ClickUp_AirbyteCustom.task.name` and `Quickbooks_Airbyte.customers.CompanyName`. This gets to ~658 matched records (~31%) immediately with no data entry required, and serves as a fallback once the `covr_id` path is live.
 
-**Definition of Done:** QuickBooks custom fields available in `Quickbooks_Airbyte.customers` in BigQuery; `company_join_keys` match rate for QuickBooks ≥ 90% against active/onboarding ClickUp records.
+**Long-Term Solution — Define and Populate the Custom Field:**
+1. Define the "Unique ID" custom field on QuickBooks customer records (one-time setup in QBO settings).
+2. Populate `covr_id` values for existing customer records — manually via the QBO UI or via the QuickBooks API.
+3. On the next Airbyte sync, `CustomField` will appear in `Quickbooks_Airbyte.customers` in BigQuery.
+4. Update `company_join_keys` matching logic to join on `covr_id` extracted from `CustomField`, with name-based matching as a fallback.
+
+**Owner:** Austin (QBO custom field setup and population), Engineering (BigQuery unnest logic and `company_join_keys` rebuild)
+
+**Definition of Done:** `CustomField` column present and populated in `Quickbooks_Airbyte.customers`; `company_join_keys` QuickBooks match rate ≥ 90% against active/onboarding ClickUp records.
 
 ### 7.2 New Customer ID Propagation Workflow
 
@@ -311,7 +327,153 @@ The following artifacts constitute the complete definition of done for this init
 
 ---
 
-## 10. Reporting Cadence & Governance
+## 10. Platform Costs & Open Architecture Questions
+
+### 10.1 Current Platform Costs (as of March 2026)
+
+| Component | Cost Basis | Current Monthly Cost |
+| --- | --- | --- |
+| **Airbyte Cloud** | Usage credits + $10 subscription | ~$56/month (pre-tax avg, last 4 months) |
+| **BigQuery — Storage** | Active: $0.02/GB · Long-term: $0.01/GB | ~$0.84/month |
+| **BigQuery — Compute** | On-demand: $6.25/TB processed | ~$2.17/month (0.35 TB billed, March 2026) |
+| **BI / Dashboard Layer** | Next.js app (hosting TBD) | TBD |
+| **Total (excl. BI layer)** | | **~$59/month** |
+
+**BigQuery storage breakdown:**
+
+| Dataset | Active (GB) | Long-Term (GB) | Total (GB) |
+| --- | --- | --- | --- |
+| PostHog_Direct | 3.5 | 59.7 | 63.3 |
+| HubSpot_Airbyte | 5.6 | 0.2 | 5.8 |
+| covr_gtm | 1.4 | 0.0 | 1.4 |
+| definitive_healthcare | 0.4 | 0.0 | 0.4 |
+| Intercom_Airbyte | 0.3 | 0.0 | 0.3 |
+| ClickUp_AirbyteCustom | 0.3 | 0.0 | 0.3 |
+| Quickbooks_Airbyte | 0.1 | 0.0 | 0.1 |
+| revops_analytics + other | 0.1 | 0.0 | 0.1 |
+| **Total** | **12.0** | **59.9** | **71.9** |
+
+> PostHog_Direct dominates storage (88% of total) due to 59.7 GB of long-term data. The long-term tier is charged at half the active rate, so this has minimal cost impact today (~$0.60/month), but warrants a **data retention policy decision** — see open questions below.
+
+**Airbyte monthly billing history:**
+
+| Period | Credits Used | Credit Cost | Subscription | Total (pre-tax) |
+| --- | --- | --- | --- | --- |
+| Nov 24 – Dec 23, 2025 | 27.6 | $58.93 | $10.00 | $68.93 |
+| Dec 24, 2025 – Jan 23, 2026 | 19.0 | $37.56 | $10.00 | $47.56 |
+| Jan 24 – Feb 23, 2026 | 19.5 | $38.71 | $10.00 | $48.71 |
+| Feb 24 – Mar 23, 2026 | 23.9 | $49.67 | $10.00 | $59.67 |
+| **4-month average** | | | | **$56.22** |
+
+Credit usage in November was 45% higher than the Jan–Feb baseline, likely reflecting heavier initial connector setup and full-refresh syncs. Usage has stabilized.
+
+---
+
+### 10.2 Looker Pricing & Licensing Options
+
+This section outlines the cost structure for **Google Looker (Google Cloud core)** — the platform specified in this proposal — and compares it to alternatives.
+
+#### Looker (Google Cloud core) Pricing Structure
+
+Looker pricing has two components: **platform licensing** and **per-user licensing**.
+
+**Platform Editions** (includes bundled users):
+
+| Edition | Target | Included Users | Details |
+| --- | --- | --- | --- |
+| **Standard** | Teams < 50 users | 10 Standard + 2 Developer | 1 production instance, 1K query API calls/month |
+| **Enterprise** | Org-wide BI | 10 Standard + 2 Developer | 1 production instance, 100K query API calls/month |
+| **Embed** | External analytics | 10 Standard + 2 Developer | 1 production instance, 500K query API calls/month |
+
+Platform pricing is annual commitment — contact sales for exact cost.
+
+**Per-User Licensing** (additional users beyond the bundled 12):
+
+| User Type | Monthly Cost | Capabilities |
+| --- | --- | --- |
+| **Developer User** | $125/month | Full access: Admin, LookML dev mode, API, SQL Runner, Explore, dashboards |
+| **Standard User** | $60/month | Dashboards, Looks, Explore, SQL Runner, data downloads, view-only LookML |
+| **Viewer User** | $30/month | View-only: dashboards, Looks, data filtering, drill-down, scheduling |
+
+> Most departments can operate with **Viewer licenses** ($30/mo) for users who only need to consume pre-built dashboards. **Standard licenses** ($60/mo) are needed for rep/analyst roles who will build their own analyses via Explore.
+
+**Estimated monthly cost for ~20 users across departments:**
+- 1 Standard Platform license (includes 12 users)
+- 8 additional Viewer Users: 8 × $30 = $240/month
+- 4 additional Standard Users: 4 × $60 = $240/month
+- 2 additional Developer Users: 2 × $125 = $250/month
+- **Estimated total: ~$730/month** (actual platform cost excluded — contact sales)
+
+#### Conversational Analytics (Natural Language Queries) — Token Pricing
+
+Conversational Analytics is included with all Looker licenses. Token quotas reset monthly per user:
+
+| User License | Input Tokens/month | Output Tokens/month |
+| --- | --- | --- |
+| Viewer | 1M | 20K |
+| Standard | 2M | 40K |
+| Developer | 4M | 80K |
+
+**Through September 30, 2026:** unlimited access (no quota enforcement, no overage fees).
+**Starting October 1, 2026:** overages billed at:
+- Input tokens: $3.00 per 1M tokens
+- Output tokens: $20.00 per 1M tokens
+
+#### Free Alternatives
+
+**Looker Studio (free)**
+- Unlimited users, unlimited dashboards
+- Connects to BigQuery natively
+- **Does NOT include** Conversational Analytics, semantic layer (LookML), or Explore
+- Suitable for basic dashboarding but not enterprise self-service BI
+
+**Current Next.js Dashboard** (current approach)
+- No per-user licensing cost
+- Full control over UI and features
+- Requires ongoing engineering maintenance for new features/charts
+- No built-in natural language querying
+
+#### Recommendation
+
+Given the scale of Covr's BI needs (4 departments, ad-hoc analysis, natural language queries), **Looker (Google Cloud core) Standard** is the most appropriate option. The per-user costs scale with adoption — departments can begin with Viewer licenses and upgrade analysts/rep leads to Standard as needed. The free tier (Looker Studio) is insufficient due to the lack of a semantic layer and Explore capabilities.
+
+---
+
+### 10.3 Open Architecture Questions for Technical Review
+
+The following questions need answers from Engineering (Jeff / Jim) before Phase 2 schema build begins. They are cost, scale, and correctness decisions that affect the design of the transformation layer.
+
+**Storage & Retention**
+
+- **Raw data retention policy:** Airbyte writes raw records into each source dataset indefinitely. PostHog alone is already 63 GB. What is the retention policy for raw staging tables — are they append-only indefinitely, or should old partitions be dropped after a defined window (e.g., 90 days for raw, permanent for transformed)?
+- **Partitioning strategy:** The `revops_analytics` views are currently unpartitioned. As query volume grows, which tables should be partitioned (by date) and clustered (by `covr_id` or corporation) to control compute costs?
+
+**Compute & Scaling**
+
+- **On-demand vs. reserved slots:** Current compute cost is ~$2/month on on-demand pricing (0.35 TB/month). At what query volume does switching to BigQuery flat-rate reservations become cost-effective? What is the projected query volume once all department dashboards are live?
+- **Dashboard query caching:** Are dashboard queries using BigQuery's results cache? Repeated identical queries against the same views are free if cached. Are views configured as materialized views or standard views? Materializing high-traffic views would reduce per-query compute costs.
+- **Transformation layer:** Are the `revops_analytics` views run as on-demand SQL views (compute charged at query time by each dashboard hit) or scheduled as materialized tables (compute charged once per refresh)? This decision significantly affects cost at scale.
+
+**Pipeline Architecture**
+
+- **Sync strategy per source:** Are all Airbyte connectors running full-refresh or incremental syncs? Full-refresh on large tables (e.g., PostHog events) drives most of the Airbyte credit usage. Which sources support incremental, and have they been configured as such?
+- **Schema change handling:** When an upstream system (e.g., HubSpot) adds or renames a field, how does that surface in BigQuery, and what is the process to update downstream views without breaking dashboards?
+- **Pipeline failure alerting:** What monitoring exists for failed Airbyte syncs? Is there an alert when a source hasn't synced within its expected window?
+
+**Access & Security**
+
+- **BigQuery IAM roles:** Who currently has access to the raw source datasets (`ClickUp_AirbyteCustom`, `HubSpot_Airbyte`, etc.)? Should raw source data be restricted to Engineering only, with department users accessing only `revops_analytics` views?
+- **PII handling:** QuickBooks invoices and HubSpot contacts contain billing amounts, email addresses, and phone numbers. Is there a data classification policy that determines how this data is handled, who can access it, and whether it needs to be masked in any views?
+- **Row-level security:** Sales rep dashboards currently show all reps' data. As adoption grows, should rep-level views enforce row-level security so reps only see their own pipeline?
+
+**BI Layer**
+
+- **Dashboard hosting:** The current BI layer is a Next.js application. Where will it be hosted (Vercel, GCP Cloud Run, etc.), and what is the expected hosting cost?
+- **Google Looker:** The original proposal specified Looker as the BI layer. Is this still the direction, or is the Next.js dashboard the long-term solution? This decision affects licensing cost (Looker is significantly more expensive) and the ongoing engineering maintenance burden.
+
+---
+
+## 11. Reporting Cadence & Governance
 
 Austin will post a weekly progress update to the `#proj_data_warehouse` Slack channel covering: work completed, blockers, decisions made, and upcoming milestones. All project artifacts, notes, and findings will be maintained in ClickUp at the [project task](https://app.clickup.com/t/86aedfa1n) and linked Google Docs.
 
@@ -371,7 +533,7 @@ erDiagram
 
     CLICKUP ||--o{ HUBSPOT : "covr_id"
     CLICKUP ||--o{ INTERCOM : "covr_id"
-    CLICKUP ||--o{ QUICKBOOKS : "covr_id (custom connector req'd)"
+    CLICKUP ||--o{ QUICKBOOKS : "covr_id (custom field setup req'd)"
     CLICKUP ||--o{ POSTHOG : "covr_id"
     CLICKUP ||--o{ DEFINITIVE : "facility name match"
 ```
