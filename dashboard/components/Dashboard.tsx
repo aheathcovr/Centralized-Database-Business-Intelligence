@@ -114,7 +114,7 @@ export default function Dashboard() {
   }, [timelineFilteredCorporations, stats]);
 
   // Apply UI filters (status, product, search) on top of timeline filter
-  const filteredCorporations = timelineFilteredCorporations.filter((corp) => {
+  const filteredCorporations = timelineFilteredCorporations.filter((corp: Corporation) => {
     const matchesTaskStatus =
       selectedTaskStatus === 'all' || corp.task_status_label === selectedTaskStatus;
     const matchesProduct =
@@ -142,10 +142,10 @@ export default function Dashboard() {
 
   // GTM priority: lowest-penetration active + implementation accounts (uses timeline-filtered corps)
   const penetrationData = timelineFilteredCorporations
-    .filter((c) => c.task_status_label === 'Active' || c.task_status_label === 'Implementation')
-    .sort((a, b) => (a.penetration_rate || 0) - (b.penetration_rate || 0))
+    .filter((c: Corporation) => c.task_status_label === 'Active' || c.task_status_label === 'Implementation')
+    .sort((a: Corporation, b: Corporation) => (a.penetration_rate || 0) - (b.penetration_rate || 0))
     .slice(0, 10)
-    .map((corp) => ({
+    .map((corp: Corporation) => ({
       name: corp.corporation_name.length > 20
         ? corp.corporation_name.substring(0, 20) + '...'
         : corp.corporation_name,
@@ -179,7 +179,7 @@ export default function Dashboard() {
       matched: timelineFilteredStats?.churned_facilities_in_dh || 0,
       unmatched: (timelineFilteredStats?.churned_facilities || 0) - (timelineFilteredStats?.churned_facilities_in_dh || 0),
     },
-  ].filter((d) => d.matched + d.unmatched > 0);
+  ].filter((d: { status: string; matched: number; unmatched: number }) => d.matched + d.unmatched > 0);
 
   const weightedPenetration =
     timelineFilteredStats && timelineFilteredStats.total_facilities > 0
@@ -187,14 +187,14 @@ export default function Dashboard() {
       : 0;
 
   // GTM tier metrics — scoped to Active accounts only, affected by timeline filter
-  const activeCorps = timelineFilteredCorporations.filter((c) => c.task_status_label === 'Active');
-  const tierBelow50 = activeCorps.filter((c) => (c.penetration_rate || 0) < 0.5);
-  const tierMid = activeCorps.filter((c) => (c.penetration_rate || 0) >= 0.5 && (c.penetration_rate || 0) < 0.8);
-  const tierAbove80 = activeCorps.filter((c) => (c.penetration_rate || 0) >= 0.8);
-  const facilitiesBelow50 = tierBelow50.reduce((s, c) => s + (c.total_facilities || 0), 0);
-  const facilitiesMid = tierMid.reduce((s, c) => s + (c.total_facilities || 0), 0);
-  const facilitiesAbove80 = tierAbove80.reduce((s, c) => s + (c.total_facilities || 0), 0);
-  const expansionOpportunity = activeCorps.reduce((sum, corp) => {
+  const activeCorps = timelineFilteredCorporations.filter((c: Corporation) => c.task_status_label === 'Active');
+  const tierBelow50 = activeCorps.filter((c: Corporation) => (c.penetration_rate || 0) < 0.5);
+  const tierMid = activeCorps.filter((c: Corporation) => (c.penetration_rate || 0) >= 0.5 && (c.penetration_rate || 0) < 0.8);
+  const tierAbove80 = activeCorps.filter((c: Corporation) => (c.penetration_rate || 0) >= 0.8);
+  const facilitiesBelow50 = tierBelow50.reduce((s: number, c: Corporation) => s + (c.total_facilities || 0), 0);
+  const facilitiesMid = tierMid.reduce((s: number, c: Corporation) => s + (c.total_facilities || 0), 0);
+  const facilitiesAbove80 = tierAbove80.reduce((s: number, c: Corporation) => s + (c.total_facilities || 0), 0);
+  const expansionOpportunity = activeCorps.reduce((sum: number, corp: Corporation) => {
     const target = Math.floor((corp.total_facilities || 0) * 0.8);
     return sum + Math.max(0, target - (corp.facilities_in_dh || 0));
   }, 0);
@@ -202,7 +202,7 @@ export default function Dashboard() {
   // Product depth vs. penetration — does more products → higher wallet share?
   const productDepthData = [1, 2, 3]
     .map((count) => {
-      const corps = activeCorps.filter((c) => {
+      const corps = activeCorps.filter((c: Corporation) => {
         const n =
           (c.product_mix.includes('Flow') ? 1 : 0) +
           (c.product_mix.includes('View') ? 1 : 0) +
@@ -211,7 +211,7 @@ export default function Dashboard() {
       });
       const avg =
         corps.length > 0
-          ? corps.reduce((s, c) => s + (c.penetration_rate || 0), 0) / corps.length
+          ? corps.reduce((s: number, c: Corporation) => s + (c.penetration_rate || 0), 0) / corps.length
           : 0;
       return {
         products: count === 1 ? '1 Product' : count === 2 ? '2 Products' : '3 Products',
@@ -221,7 +221,7 @@ export default function Dashboard() {
     })
     .filter((d) => d.count > 0);
 
-  const scatterData = filteredCorporations.map((corp) => ({
+  const scatterData = filteredCorporations.map((corp: Corporation) => ({
     name: corp.corporation_name,
     won: corp.facilities_in_dh || 0,
     remaining: Math.max(0, (corp.total_facilities || 0) - (corp.facilities_in_dh || 0)),
@@ -230,12 +230,12 @@ export default function Dashboard() {
   }));
 
   const wonMedian = (() => {
-    const vals = scatterData.map((d) => d.won).sort((a, b) => a - b);
+    const vals = scatterData.map((d: { won: number }) => d.won).sort((a: number, b: number) => a - b);
     return vals[Math.floor(vals.length / 2)] ?? 0;
   })();
 
   const remainingMedian = (() => {
-    const vals = scatterData.map((d) => d.remaining).sort((a, b) => a - b);
+    const vals = scatterData.map((d: { remaining: number }) => d.remaining).sort((a: number, b: number) => a - b);
     return vals[Math.floor(vals.length / 2)] ?? 0;
   })();
 
@@ -491,7 +491,7 @@ export default function Dashboard() {
               />
               <ReferenceLine x={80} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '80% target', position: 'top', fill: '#ef4444', fontSize: 11 }} />
               <Bar dataKey="penetration">
-                {penetrationData.map((entry, i) => (
+                {penetrationData.map((entry: { name: string; penetration: number; facilities: number }, i: number) => (
                   <Cell
                     key={i}
                     fill={entry.penetration >= 80 ? '#059669' : entry.penetration >= 50 ? '#d97706' : '#dc2626'}
@@ -592,7 +592,7 @@ export default function Dashboard() {
                 label={{ value: `median (${remainingMedian.toLocaleString()})`, position: 'insideBottomRight', fontSize: 10, fill: '#64748b' }}
               />
               <Scatter data={scatterData} fillOpacity={0.75}>
-                {scatterData.map((entry, i) => (
+                {scatterData.map((entry: { name: string; won: number; remaining: number; total: number; status: string }, i: number) => (
                   <Cell key={i} fill={STATUS_COLORS[entry.status] || '#64748b'} fillOpacity={0.85} />
                 ))}
               </Scatter>
