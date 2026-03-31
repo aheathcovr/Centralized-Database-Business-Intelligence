@@ -345,6 +345,60 @@ export async function getSupportMetrics(params?: {
   })) as SupportMetrics[];
 }
 
+// Intercom monthly support metrics
+export interface SupportMetricsMonthly {
+  month_start: string;
+  year_month: string;
+  year: number;
+  month_number: number;
+  new_tickets: number;
+  closed_tickets: number;
+  csat_positive: number;
+  csat_negative: number;
+  csat_total: number;
+  csat_score_pct: number | null;
+  first_response_avg_seconds: number | null;
+  first_response_median_seconds: number | null;
+  first_response_avg_minutes: number | null;
+  first_response_median_minutes: number | null;
+  first_response_avg_hours: number | null;
+  first_response_median_hours: number | null;
+}
+
+export async function getSupportMetricsMonthly(params?: {
+  start_month?: string;
+  end_month?: string;
+}): Promise<SupportMetricsMonthly[]> {
+  const whereConditions: string[] = [];
+  const queryParams: Record<string, string> = {};
+
+  if (params?.start_month) {
+    whereConditions.push('month_start >= @start_month');
+    queryParams.start_month = params.start_month;
+  }
+  if (params?.end_month) {
+    whereConditions.push('month_start <= @end_month');
+    queryParams.end_month = params.end_month;
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
+
+  const query = `
+    SELECT *
+    FROM \`gen-lang-client-0844868008.revops_analytics.intercom_monthly_support_metrics\`
+    ${whereClause}
+    ORDER BY month_start DESC
+  `;
+
+  const [rows] = await bigquery.query({ query, params: queryParams });
+  return rows.map((row: any) => ({
+    ...row,
+    month_start: bqDateToString(row.month_start),
+  })) as SupportMetricsMonthly[];
+}
+
 // In-Month Conversion data from revops_analytics.in_month_conversion view
 export interface InMonthConversionRow {
   month_start: string;
@@ -416,7 +470,7 @@ export async function getInMonthConversion(params?: {
 }
 
 // ============================================================
-// Rep Performance — from revops_analytics.rep_performance_view
+// Rep Performance -- from revops_analytics.rep_performance_view
 // ============================================================
 export interface RepPerformanceRow {
   month_start: string;
@@ -537,7 +591,7 @@ export async function getPipelineGeneration(params?: {
   })) as PipelineGenerationRow[];
 }
 // ============================================================
-// Pipeline Management Metrics — from revops_analytics.pipeline_metrics_view
+// Pipeline Management Metrics -- from revops_analytics.pipeline_metrics_view
 // ============================================================
 export interface PipelineMetricsRow {
   group_mode: string;
@@ -589,7 +643,7 @@ export async function getPipelineMetrics(params?: {
 }
 
 // ============================================================
-// Customer Success — CSAT & NPS by period, domain, onboarding
+// Customer Success -- CSAT & NPS by period, domain, onboarding
 // ============================================================
 
 export interface CsPeriodRow {

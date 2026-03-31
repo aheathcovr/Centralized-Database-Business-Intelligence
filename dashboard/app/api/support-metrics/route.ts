@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { getSupportMetrics } from '@/lib/bigquery';
+import { getSupportMetrics, getSupportMetricsMonthly } from '@/lib/bigquery';
 import { authOptions } from '@/lib/auth';
 
 export const revalidate = 3600; // re-fetch from BigQuery at most once per hour
@@ -16,15 +16,23 @@ export async function GET(request: Request) {
 
     // Parse optional date range query params
     const { searchParams } = new URL(request.url);
-    const start_week = searchParams.get('start_week') ?? undefined;
-    const end_week = searchParams.get('end_week') ?? undefined;
+    const period = searchParams.get('period') ?? 'monthly';
 
-    // Fetch data from BigQuery
-    const metrics = await getSupportMetrics({ start_week, end_week });
-
-    return NextResponse.json({ metrics }, {
-      headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=3600' },
-    });
+    if (period === 'weekly') {
+      const start_week = searchParams.get('start_week') ?? undefined;
+      const end_week = searchParams.get('end_week') ?? undefined;
+      const metrics = await getSupportMetrics({ start_week, end_week });
+      return NextResponse.json({ metrics, period: 'weekly' }, {
+        headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=3600' },
+      });
+    } else {
+      const start_month = searchParams.get('start_month') ?? undefined;
+      const end_month = searchParams.get('end_month') ?? undefined;
+      const metrics = await getSupportMetricsMonthly({ start_month, end_month });
+      return NextResponse.json({ metrics, period: 'monthly' }, {
+        headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=3600' },
+      });
+    }
   } catch (error) {
     console.error('Error fetching support metrics:', error);
     return NextResponse.json(

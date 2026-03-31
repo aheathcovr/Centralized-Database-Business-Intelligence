@@ -15,9 +15,11 @@ import {
   ComposedChart,
 } from 'recharts';
 
-interface SupportMetricsRow {
-  week_start: string;
-  year_week: string;
+interface SupportMetricsMonthlyRow {
+  month_start: string;
+  year_month: string;
+  year: number;
+  month_number: number;
   new_tickets: number;
   closed_tickets: number;
   csat_positive: number;
@@ -33,7 +35,7 @@ interface SupportMetricsRow {
 }
 
 export default function SupportMetricsDashboard() {
-  const [data, setData] = useState<SupportMetricsRow[]>([]);
+  const [data, setData] = useState<SupportMetricsMonthlyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,26 +60,16 @@ export default function SupportMetricsDashboard() {
     }
   };
 
-  // Format week label from YYYY-MM-DD to e.g. "Mar 10"
-  const formatWeekLabel = (weekStart: string): string => {
-    try {
-      const d = new Date(weekStart + 'T00:00:00');
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    } catch {
-      return weekStart;
-    }
-  };
-
   // --- Ticket Volume Data ---
   const ticketVolumeData = data.map((row) => ({
-    week: formatWeekLabel(row.week_start),
+    month: row.year_month,
     New: row.new_tickets,
     Closed: row.closed_tickets,
   }));
 
   // --- CSAT Data ---
   const csatData = data.map((row) => ({
-    week: formatWeekLabel(row.week_start),
+    month: row.year_month,
     Positive: row.csat_positive,
     Negative: row.csat_negative,
     Score: row.csat_score_pct != null ? Math.round(row.csat_score_pct) : null,
@@ -85,7 +77,7 @@ export default function SupportMetricsDashboard() {
 
   // --- First Response Time Data ---
   const frtData = data.map((row) => ({
-    week: formatWeekLabel(row.week_start),
+    month: row.year_month,
     avgMin: row.first_response_avg_minutes != null
       ? Math.round(row.first_response_avg_minutes * 10) / 10
       : null,
@@ -94,7 +86,7 @@ export default function SupportMetricsDashboard() {
       : null,
   }));
 
-  // Summary cards (latest week)
+  // Summary cards (latest month)
   const latest = data.length > 0 ? data[data.length - 1] : null;
 
   if (loading) {
@@ -128,12 +120,9 @@ export default function SupportMetricsDashboard() {
         {latest && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="card-glow">
-              <p className="text-[11px] uppercase tracking-widest mb-2">Latest Week</p>
+              <p className="text-[11px] uppercase tracking-widest mb-2">Latest Month</p>
               <p className="text-2xl font-bold tracking-tight">
-                {formatWeekLabel(latest.week_start)}
-              </p>
-              <p className="text-[11px] mt-1.5">
-                {latest.year_week}
+                {latest.year_month}
               </p>
             </div>
             <div className="card-glow" style={{ borderTopColor: "#3B7E6B" }}>
@@ -179,13 +168,13 @@ export default function SupportMetricsDashboard() {
             Ticket Volume / New vs Closed
           </h3>
           <p className="text-sm mb-4">
-            Weekly ticket creation and resolution counts. Balancing new and closed tickets indicates healthy throughput.
+            Monthly ticket creation and resolution counts. Balancing new and closed tickets indicates healthy throughput.
           </p>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={ticketVolumeData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
-                dataKey="week"
+                dataKey="month"
                 tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
                 interval={0}
                 angle={-45}
@@ -219,13 +208,13 @@ export default function SupportMetricsDashboard() {
             CSAT Score Trend
           </h3>
           <p className="text-sm mb-4">
-            Customer satisfaction responses stacked by sentiment. Line overlay shows the positive-response percentage each week.
+            Customer satisfaction responses stacked by sentiment. Line overlay shows the positive-response percentage each month.
           </p>
           <ResponsiveContainer width="100%" height={340}>
             <ComposedChart data={csatData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
-                dataKey="week"
+                dataKey="month"
                 tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
                 interval={0}
                 angle={-45}
@@ -312,7 +301,7 @@ export default function SupportMetricsDashboard() {
             <LineChart data={frtData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
-                dataKey="week"
+                dataKey="month"
                 tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
                 interval={0}
                 angle={-45}
@@ -372,14 +361,14 @@ export default function SupportMetricsDashboard() {
         {/* Data Table */}
         <div className="card overflow-hidden">
           <h3 className="text-lg font-semibold mb-4">
-            Weekly Breakdown ({data.length} weeks)
+            Monthly Breakdown ({data.length} months)
           </h3>
           <div className="overflow-x-auto">
             <table className="dashboard-table">
               <thead className="">
                 <tr>
                   <th className="">
-                    Week
+                    Month
                   </th>
                   <th className="" style={{ textAlign: "right" }}>
                     New
@@ -406,12 +395,9 @@ export default function SupportMetricsDashboard() {
               </thead>
               <tbody >
                 {data.map((row) => (
-                  <tr key={row.week_start} >
+                  <tr key={row.month_start} >
                     <td className="" style={{ fontWeight: 500, color: "var(--text-primary)" }}>
-                      {formatWeekLabel(row.week_start)}
-                      <span className="text-xs text-gray-400 ml-2">
-                        {row.year_week}
-                      </span>
+                      {row.year_month}
                     </td>
                     <td className="" style={{ textAlign: "right", fontFamily: 'var(--font-primary-sans)' }}>
                       {row.new_tickets}
