@@ -1,7 +1,7 @@
 -- In-Month Conversion View
 -- Created: 2026-03-30
 -- Dataset: revops_analytics.in_month_conversion
--- Source: HubSpot_Airbyte (Fivetran connector) - deal, deal_property_history, deal_stage tables
+-- Source: HubSpot_Airbyte (Airbyte connector) - deals, deals_property_history tables
 --
 -- Metric: % Won vs Entering Expected = Won / (Won + Lost + Pushed)
 --
@@ -9,7 +9,7 @@
 -- pipeline stage actually closed won by month-end, vs were lost or pushed out.
 --
 -- Three parts:
---   1. Start of Month Pipeline Snapshot (deal_property_history at 23:59:59 prior day)
+--   1. Start of Month Pipeline Snapshot (deals_property_history at 23:59:59 prior day)
 --   2. End of Month Actuals (Won/Lost/Pushed with origin attribution: Expected, Later Month, Created)
 --   3. Final Output Metric (% Won vs Entering Expected) pivotable by month columns
 --
@@ -56,7 +56,7 @@ month_calendar AS (
     month_start,
     LAST_DAY(month_start, MONTH) AS month_end,
     -- Snapshot timestamp: 23:59:59 on last day of prior month
-    TIMESTAMP_SUB(month_start, INTERVAL 1 SECOND) AS snapshot_ts,
+    TIMESTAMP_SUB(TIMESTAMP(month_start), INTERVAL 1 SECOND) AS snapshot_ts,
     FORMAT_DATE('%b-%y', month_start) AS month_label,
     EXTRACT(YEAR FROM month_start) AS year,
     EXTRACT(MONTH FROM month_start) AS month_number
@@ -76,7 +76,7 @@ month_calendar AS (
 -- stage (not closedwon/closedlost) at 23:59:59 on the last day of
 -- the prior month.
 --
--- Uses deal_property_history to get the effective value of 'dealstage'
+-- Uses deals_property_history to get the effective value of 'dealstage'
 -- at that exact point in time by finding the most recent change
 -- timestamp <= snapshot_ts.
 
@@ -86,23 +86,23 @@ som_snapshot_raw AS (
     mc.month_end,
     mc.month_label,
     mc.snapshot_ts,
-    dph.deal_id,
+    dph.dealId AS deal_id,
     dph.value AS stage_at_som,
     -- Most recent property change before or at snapshot
     dph.timestamp AS stage_set_timestamp,
     -- Close date: used to determine if deal was "expected" this month
-    d.closedate,
-    d.owner_id AS deal_owner_id,
-    d.amount AS deal_amount,
-    d.pipeline AS deal_pipeline_id
+    DATE(d.properties_closedate) AS properties_closedate,
+    d.properties_hubspot_owner_id AS deal_owner_id,
+    d.properties_amount AS deal_amount,
+    d.properties_pipeline AS deal_pipeline_id
   FROM month_calendar mc
   CROSS JOIN (
-    SELECT deal_id, value, timestamp
-    FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deal_property_history`
+    SELECT dealId, value, timestamp
+    FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deals_property_history`
     WHERE property = 'dealstage'
   ) dph
-  JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.deal` d
-    ON dph.deal_id = d.deal_id
+  JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.deals` d
+    ON dph.dealId = d.id
   WHERE dph.timestamp <= mc.snapshot_ts
 ),
 
@@ -115,7 +115,7 @@ som_snapshot AS (
     month_label,
     stage_at_som,
     stage_set_timestamp,
-    closedate AS deal_close_date,
+    properties_closedate AS deal_close_date,
     deal_owner_id,
     deal_amount,
     deal_pipeline_id
@@ -170,19 +170,16 @@ deals_entering AS (
 eom_snapshot_raw AS (
   SELECT
     mc.month_start,
-    dph.deal_id,
+    dph.dealId AS deal_id,
     dph.value AS stage_at_eom,
     dph.timestamp AS eom_stage_set_timestamp
   FROM month_calendar mc
   CROSS JOIN (
-    SELECT deal_id, value, timestamp
-    FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deal_property_history`
+    SELECT dealId, value, timestamp
+    FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deals_property_history`
     WHERE property = 'dealstage'
   ) dph
-  WHERE dph.timestamp <= TIMESTAMP_ADD(
-    TIMESTAMP(mc.month_end),
-    INTERVAL 23 HOUR + INTERVAL 59 MINUTE + INTERVAL 59 SECOND
-  )
+  WHERE dph.timestamp <= TIMESTAMP_ADD(TIMESTAMP(mc.month_end), INTERVAL 86399 SECOND)
 ),
 
 eom_snapshot AS (
@@ -274,20 +271,20 @@ newly_won_deals AS (
   SELECT
     mc.month_start,
     mc.month_label,
-    d.deal_id,
-    d.amount AS deal_amount,
-    d.owner_id AS deal_owner_id,
+    d.id AS deal_id,
+    d.properties_amount AS deal_amount,
+    d.properties_hubspot_owner_id AS deal_owner_id,
     CASE
-      WHEN d.createdate >= mc.month_start
+      WHEN DATE(d.properties_createdate) >= mc.month_start
         THEN 'Created'
       ELSE 'Reopened'
     END AS won_origin
   FROM month_calendar mc
-  JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.deal` d
-    ON d.closedate BETWEEN mc.month_start AND mc.month_end
-  WHERE d.dealstage = 'closedwon'
+  JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.deals` d
+    ON DATE(d.properties_closedate) BETWEEN mc.month_start AND mc.month_end
+  WHERE d.properties_dealstage = 'closedwon'
     -- Exclude deals already tracked in our entering snapshot
-    AND d.deal_id NOT IN (
+    AND d.id NOT IN (
       SELECT deal_id FROM deals_entering
       WHERE month_start = mc.month_start
     )
