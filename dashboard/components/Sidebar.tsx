@@ -38,6 +38,15 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    name: 'Pipeline Management',
+    href: '/pipeline-management',
+    icon: (
+      <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+      </svg>
+    ),
+  },
+  {
     name: 'Support Metrics',
     href: '/support-metrics',
     icon: (

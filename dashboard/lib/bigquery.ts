@@ -473,8 +473,10 @@ export async function getRepPerformance(params?: {
   })) as RepPerformanceRow[];
 }
 
+
+
 // ============================================================
-// Pipeline Generation — from revops_analytics.pipeline_generation_view
+// Pipeline Generation -- from revops_analytics.pipeline_generation_view
 // ============================================================
 export interface PipelineGenerationRow {
   period_start: string;
@@ -523,7 +525,7 @@ export async function getPipelineGeneration(params?: {
 
   const query = `
     SELECT *
-    FROM \`gen-lang-client-0844868008.revops_analytics.pipeline_generation_view\`
+    FROM `gen-lang-client-0844868008.revops_analytics.pipeline_generation_view`
     ${whereClause}
     ORDER BY period_start ASC, pipeline_amount DESC
   `;
@@ -533,4 +535,55 @@ export async function getPipelineGeneration(params?: {
     ...row,
     period_start: bqDateToString(row.period_start),
   })) as PipelineGenerationRow[];
+}
+// ============================================================
+// Pipeline Management Metrics — from revops_analytics.pipeline_metrics_view
+// ============================================================
+export interface PipelineMetricsRow {
+  group_mode: string;
+  group_label: string;
+  group_key: string;
+  display_name: string;
+  trailing_window: string;
+  total_deals: number;
+  deals_won: number;
+  deals_lost: number;
+  deals_open: number;
+  total_won_amount: number;
+  total_pipeline_amount: number;
+  close_rate_pct: number | null;
+  asp: number | null;
+  avg_sales_cycle_days: number | null;
+  pipeline_velocity_30d: number | null;
+}
+
+export async function getPipelineMetrics(params?: {
+  group_mode?: string;
+  trailing_window?: string;
+}): Promise<PipelineMetricsRow[]> {
+  const whereConditions: string[] = [];
+  const queryParams: Record<string, string> = {};
+
+  if (params?.group_mode) {
+    whereConditions.push('group_mode = @group_mode');
+    queryParams.group_mode = params.group_mode;
+  }
+  if (params?.trailing_window) {
+    whereConditions.push('trailing_window = @trailing_window');
+    queryParams.trailing_window = params.trailing_window;
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
+
+  const query = `
+    SELECT *
+    FROM \`gen-lang-client-0844868008.revops_analytics.pipeline_metrics_view\`
+    ${whereClause}
+    ORDER BY group_mode, trailing_window, display_name
+  `;
+
+  const [rows] = await bigquery.query({ query, params: queryParams });
+  return rows as PipelineMetricsRow[];
 }
