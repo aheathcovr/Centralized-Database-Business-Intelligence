@@ -80,7 +80,7 @@ export default function SupportMetricsDashboard() {
     week: formatWeekLabel(row.week_start),
     Positive: row.csat_positive,
     Negative: row.csat_negative,
-    Score: row.csat_score_pct != null ? Math.round(row.csat_score_pct * 100) : null,
+    Score: row.csat_score_pct != null ? Math.round(row.csat_score_pct) : null,
   }));
 
   // --- First Response Time Data ---
@@ -149,7 +149,7 @@ export default function SupportMetricsDashboard() {
               <p className="text-[11px] uppercase tracking-widest mb-2">CSAT Score</p>
               <p className="text-3xl font-bold text-purple-600 font-mono tabular-nums">
                 {latest.csat_score_pct != null
-                  ? `${Math.round(latest.csat_score_pct * 100)}%`
+                  ? `${Math.round(latest.csat_score_pct)}%`
                   : 'N/A'}
               </p>
               <p className="text-[11px] mt-1.5">
@@ -427,7 +427,7 @@ export default function SupportMetricsDashboard() {
                     </td>
                     <td className="" style={{ textAlign: "right", fontWeight: 500, fontFamily: "var(--font-fira-code)" }}>
                       {row.csat_score_pct != null
-                        ? `${Math.round(row.csat_score_pct * 100)}%`
+                        ? `${Math.round(row.csat_score_pct)}%`
                         : '—'}
                     </td>
                     <td className="" style={{ textAlign: "right", fontFamily: "var(--font-fira-code)" }}>
