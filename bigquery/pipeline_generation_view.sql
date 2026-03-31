@@ -41,7 +41,7 @@ deal_owners AS (
       COALESCE(o.lastName, '')
     ) AS owner_full_name,
     SAFE_CAST(d.properties_amount AS FLOAT64) AS amount,
-    d.properties_dealstage AS dealstage,
+    LOWER(d.properties_dealstage) AS dealstage,
     SAFE_CAST(d.properties_createdate AS TIMESTAMP) AS createdate,
     SAFE_CAST(d.properties_closedate AS TIMESTAMP) AS closedate,
     d.properties_pipeline AS pipeline

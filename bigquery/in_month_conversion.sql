@@ -282,7 +282,7 @@ newly_won_deals AS (
   FROM month_calendar mc
   JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.deals` d
     ON DATE(d.properties_closedate) BETWEEN mc.month_start AND mc.month_end
-  WHERE d.properties_dealstage = 'closedwon'
+  WHERE LOWER(d.properties_dealstage) = 'closedwon'
     -- Exclude deals already tracked in our entering snapshot
     AND d.id NOT IN (
       SELECT deal_id FROM deals_entering

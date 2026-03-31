@@ -41,7 +41,7 @@ deal_owners AS (
       COALESCE(o.lastName, '')
     ) AS owner_full_name,
     SAFE_CAST(d.properties_amount AS FLOAT64) AS amount,
-    d.properties_dealstage AS dealstage,
+    LOWER(d.properties_dealstage) AS dealstage,
     -- Use boolean fields for closed won / closed lost detection
     COALESCE(d.properties_hs_is_closed_won, FALSE) AS is_closed_won,
     COALESCE(d.properties_hs_is_closed, FALSE) AS is_closed,

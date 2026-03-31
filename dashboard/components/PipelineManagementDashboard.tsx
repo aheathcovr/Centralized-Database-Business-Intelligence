@@ -59,9 +59,10 @@ export default function PipelineManagementDashboard() {
   const [selectedReps, setSelectedReps] = useState<string[]>(DEFAULT_SELECTED_REPS);
 
   const { data, loading, error, refetch: fetchAllData } = useQuery<{ data: PipelineMetricsRow[] }>(
-    'pipeline-metrics',
+    `pipeline-metrics-${groupMode}-${trailingWindow}`,
     async () => {
-      const response = await fetch('/api/pipeline-metrics');
+      const params = new URLSearchParams({ group_mode: groupMode, trailing_window: trailingWindow });
+      const response = await fetch(`/api/pipeline-metrics?${params}`);
       if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
       }
@@ -72,9 +73,11 @@ export default function PipelineManagementDashboard() {
   const allData = data?.data || [];
 
   const availableReps = useMemo(() => {
-    const repRows = allData.filter((row) => row.group_mode === 'by_rep' && row.trailing_window === trailingWindow);
+    // API returns only data for the selected trailing_window and group_mode,
+    // so when groupMode is 'by_rep', allData already contains rep data
+    const repRows = allData.filter((row) => row.group_mode === 'by_rep');
     return repRows.map((row) => row.display_name).sort();
-  }, [allData, trailingWindow]);
+  }, [allData]);
 
   const [repsInitialized, setRepsInitialized] = useState(false);
   useEffect(() => {
@@ -103,15 +106,15 @@ export default function PipelineManagementDashboard() {
   const clearAllReps = () => setSelectedReps([]);
 
   const filteredData = useMemo(() => {
-    // js-combine-iterations: Combine multiple filter conditions into one loop
+    // API now returns only the selected group_mode and trailing_window,
+    // so we only need to filter by selected reps
     return allData.filter((row) => {
-      if (row.group_mode !== groupMode || row.trailing_window !== trailingWindow) return false;
       if (groupMode === 'by_rep' && selectedReps.length > 0) {
         return selectedReps.includes(row.display_name);
       }
       return true;
     });
-  }, [allData, groupMode, trailingWindow, selectedReps]);
+  }, [allData, groupMode, selectedReps]);
 
   const aggregateKpis = useMemo(() => {
     if (filteredData.length === 0) {
