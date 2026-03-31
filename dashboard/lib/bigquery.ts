@@ -525,7 +525,7 @@ export async function getPipelineGeneration(params?: {
 
   const query = `
     SELECT *
-    FROM `gen-lang-client-0844868008.revops_analytics.pipeline_generation_view`
+    FROM \`gen-lang-client-0844868008.revops_analytics.pipeline_generation_view\`
     ${whereClause}
     ORDER BY period_start ASC, pipeline_amount DESC
   `;
@@ -772,3 +772,4 @@ export async function getCustomerSuccessSummary(): Promise<CustomerSuccessSummar
     activeCount: Number(r.active_count) || 0,
   };
 }
+
