@@ -1,5 +1,6 @@
 -- Pipeline Management Metrics View
 -- Created: 2026-03-30
+-- Updated: 2026-03-31 - Fix dealstage comparison to use boolean fields
 -- Dataset: revops_analytics.pipeline_metrics_view
 -- Source: HubSpot_Airbyte.deals, HubSpot_Airbyte.owners
 --
@@ -40,6 +41,9 @@ deal_data AS (
     ) AS owner_full_name,
     SAFE_CAST(d.properties_amount AS FLOAT64) AS amount,
     d.properties_dealstage AS dealstage,
+    -- Use boolean fields for closed won / closed lost detection
+    COALESCE(d.properties_hs_is_closed_won, FALSE) AS is_closed_won,
+    COALESCE(d.properties_hs_is_closed, FALSE) AS is_closed,
     SAFE_CAST(d.properties_createdate AS TIMESTAMP) AS createdate,
     SAFE_CAST(d.properties_closedate AS TIMESTAMP) AS closedate,
     d.properties_pipeline AS pipeline,
@@ -73,27 +77,27 @@ by_rep AS (
     owner_full_name AS display_name,
     trailing_window,
     COUNT(*) AS total_deals,
-    COUNTIF(dealstage = 'closedwon') AS deals_won,
-    COUNTIF(dealstage = 'closedlost') AS deals_lost,
-    COUNTIF(dealstage NOT IN ('closedwon', 'closedlost')) AS deals_open,
-    SUM(CASE WHEN dealstage = 'closedwon' THEN COALESCE(amount, 0) ELSE 0 END) AS total_won_amount,
+    COUNTIF(is_closed_won) AS deals_won,
+    COUNTIF(is_closed AND NOT is_closed_won) AS deals_lost,
+    COUNTIF(NOT is_closed) AS deals_open,
+    SUM(CASE WHEN is_closed_won THEN COALESCE(amount, 0) ELSE 0 END) AS total_won_amount,
     SUM(COALESCE(amount, 0)) AS total_pipeline_amount,
     SAFE_DIVIDE(
-      COUNTIF(dealstage = 'closedwon'),
+      COUNTIF(is_closed_won),
       COUNT(*)
     ) AS close_rate_pct,
     SAFE_DIVIDE(
-      SUM(CASE WHEN dealstage = 'closedwon' THEN COALESCE(amount, 0) ELSE 0 END),
-      COUNTIF(dealstage = 'closedwon')
+      SUM(CASE WHEN is_closed_won THEN COALESCE(amount, 0) ELSE 0 END),
+      COUNTIF(is_closed_won)
     ) AS asp,
     AVG(
-      CASE WHEN dealstage = 'closedwon' AND sales_cycle_days IS NOT NULL
+      CASE WHEN is_closed_won AND sales_cycle_days IS NOT NULL
       THEN sales_cycle_days
       ELSE NULL END
     ) AS avg_sales_cycle_days,
     SAFE_DIVIDE(
-      SUM(CASE WHEN dealstage = 'closedwon' THEN COALESCE(amount, 0) ELSE 0 END),
-      SUM(CASE WHEN dealstage = 'closedwon' AND sales_cycle_days IS NOT NULL
+      SUM(CASE WHEN is_closed_won THEN COALESCE(amount, 0) ELSE 0 END),
+      SUM(CASE WHEN is_closed_won AND sales_cycle_days IS NOT NULL
           THEN sales_cycle_days ELSE NULL END)
     ) * 30 AS pipeline_velocity_30d
   FROM (
@@ -116,20 +120,20 @@ by_create_month AS (
     FORMAT_DATE('%b-%Y', create_month) AS display_name,
     trailing_window,
     COUNT(*) AS total_deals,
-    COUNTIF(dealstage = 'closedwon') AS deals_won,
-    COUNTIF(dealstage = 'closedlost') AS deals_lost,
-    COUNTIF(dealstage NOT IN ('closedwon', 'closedlost')) AS deals_open,
-    SUM(CASE WHEN dealstage = 'closedwon' THEN COALESCE(amount, 0) ELSE 0 END) AS total_won_amount,
+    COUNTIF(is_closed_won) AS deals_won,
+    COUNTIF(is_closed AND NOT is_closed_won) AS deals_lost,
+    COUNTIF(NOT is_closed) AS deals_open,
+    SUM(CASE WHEN is_closed_won THEN COALESCE(amount, 0) ELSE 0 END) AS total_won_amount,
     SUM(COALESCE(amount, 0)) AS total_pipeline_amount,
-    SAFE_DIVIDE(COUNTIF(dealstage = 'closedwon'), COUNT(*)) AS close_rate_pct,
+    SAFE_DIVIDE(COUNTIF(is_closed_won), COUNT(*)) AS close_rate_pct,
     SAFE_DIVIDE(
-      SUM(CASE WHEN dealstage = 'closedwon' THEN COALESCE(amount, 0) ELSE 0 END),
-      COUNTIF(dealstage = 'closedwon')
+      SUM(CASE WHEN is_closed_won THEN COALESCE(amount, 0) ELSE 0 END),
+      COUNTIF(is_closed_won)
     ) AS asp,
-    AVG(CASE WHEN dealstage = 'closedwon' AND sales_cycle_days IS NOT NULL THEN sales_cycle_days ELSE NULL END) AS avg_sales_cycle_days,
+    AVG(CASE WHEN is_closed_won AND sales_cycle_days IS NOT NULL THEN sales_cycle_days ELSE NULL END) AS avg_sales_cycle_days,
     SAFE_DIVIDE(
-      SUM(CASE WHEN dealstage = 'closedwon' THEN COALESCE(amount, 0) ELSE 0 END),
-      SUM(CASE WHEN dealstage = 'closedwon' AND sales_cycle_days IS NOT NULL THEN sales_cycle_days ELSE NULL END)
+      SUM(CASE WHEN is_closed_won THEN COALESCE(amount, 0) ELSE 0 END),
+      SUM(CASE WHEN is_closed_won AND sales_cycle_days IS NOT NULL THEN sales_cycle_days ELSE NULL END)
     ) * 30 AS pipeline_velocity_30d
   FROM (
     SELECT *, DATE_TRUNC(DATE(createdate), MONTH) AS create_month, '30d' AS trailing_window FROM windowed_deals WHERE in_window_30d
@@ -151,20 +155,20 @@ by_create_quarter AS (
     CONCAT('Q', CAST(EXTRACT(QUARTER FROM create_quarter) AS STRING), '-', CAST(EXTRACT(YEAR FROM create_quarter) AS STRING)) AS display_name,
     trailing_window,
     COUNT(*) AS total_deals,
-    COUNTIF(dealstage = 'closedwon') AS deals_won,
-    COUNTIF(dealstage = 'closedlost') AS deals_lost,
-    COUNTIF(dealstage NOT IN ('closedwon', 'closedlost')) AS deals_open,
-    SUM(CASE WHEN dealstage = 'closedwon' THEN COALESCE(amount, 0) ELSE 0 END) AS total_won_amount,
+    COUNTIF(is_closed_won) AS deals_won,
+    COUNTIF(is_closed AND NOT is_closed_won) AS deals_lost,
+    COUNTIF(NOT is_closed) AS deals_open,
+    SUM(CASE WHEN is_closed_won THEN COALESCE(amount, 0) ELSE 0 END) AS total_won_amount,
     SUM(COALESCE(amount, 0)) AS total_pipeline_amount,
-    SAFE_DIVIDE(COUNTIF(dealstage = 'closedwon'), COUNT(*)) AS close_rate_pct,
+    SAFE_DIVIDE(COUNTIF(is_closed_won), COUNT(*)) AS close_rate_pct,
     SAFE_DIVIDE(
-      SUM(CASE WHEN dealstage = 'closedwon' THEN COALESCE(amount, 0) ELSE 0 END),
-      COUNTIF(dealstage = 'closedwon')
+      SUM(CASE WHEN is_closed_won THEN COALESCE(amount, 0) ELSE 0 END),
+      COUNTIF(is_closed_won)
     ) AS asp,
-    AVG(CASE WHEN dealstage = 'closedwon' AND sales_cycle_days IS NOT NULL THEN sales_cycle_days ELSE NULL END) AS avg_sales_cycle_days,
+    AVG(CASE WHEN is_closed_won AND sales_cycle_days IS NOT NULL THEN sales_cycle_days ELSE NULL END) AS avg_sales_cycle_days,
     SAFE_DIVIDE(
-      SUM(CASE WHEN dealstage = 'closedwon' THEN COALESCE(amount, 0) ELSE 0 END),
-      SUM(CASE WHEN dealstage = 'closedwon' AND sales_cycle_days IS NOT NULL THEN sales_cycle_days ELSE NULL END)
+      SUM(CASE WHEN is_closed_won THEN COALESCE(amount, 0) ELSE 0 END),
+      SUM(CASE WHEN is_closed_won AND sales_cycle_days IS NOT NULL THEN sales_cycle_days ELSE NULL END)
     ) * 30 AS pipeline_velocity_30d
   FROM (
     SELECT *, DATE_TRUNC(DATE(createdate), QUARTER) AS create_quarter, '30d' AS trailing_window FROM windowed_deals WHERE in_window_30d

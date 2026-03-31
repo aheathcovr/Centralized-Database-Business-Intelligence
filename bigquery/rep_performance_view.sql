@@ -1,5 +1,6 @@
 -- Rep Performance View
 -- Created: 2026-03-30
+-- Updated: 2026-03-31 - Fix dealstage comparison to use boolean fields
 -- Dataset: revops_analytics.rep_performance_view
 -- Source: HubSpot_Airbyte.deals, HubSpot_Airbyte.owners
 --
@@ -41,6 +42,9 @@ deal_owners AS (
     ) AS owner_full_name,
     SAFE_CAST(d.properties_amount AS FLOAT64) AS amount,
     d.properties_dealstage AS dealstage,
+    -- Use boolean fields for closed won / closed lost detection
+    COALESCE(d.properties_hs_is_closed_won, FALSE) AS is_closed_won,
+    COALESCE(d.properties_hs_is_closed, FALSE) AS is_closed,
     SAFE_CAST(d.properties_createdate AS TIMESTAMP) AS createdate,
     SAFE_CAST(d.properties_closedate AS TIMESTAMP) AS closedate,
     d.properties_pipeline AS pipeline
@@ -87,7 +91,7 @@ deals_won AS (
   FROM deal_owners do
   JOIN month_calendar mc
     ON DATE(DATE_TRUNC(do.closedate, MONTH)) = mc.month_start
-  WHERE do.dealstage = 'closedwon'
+  WHERE do.is_closed_won = TRUE
     AND do.closedate IS NOT NULL
   GROUP BY mc.month_start, mc.month_label, do.owner_id, do.owner_full_name
 ),
@@ -104,7 +108,8 @@ deals_lost AS (
   FROM deal_owners do
   JOIN month_calendar mc
     ON DATE(DATE_TRUNC(do.closedate, MONTH)) = mc.month_start
-  WHERE do.dealstage = 'closedlost'
+  WHERE do.is_closed = TRUE
+    AND do.is_closed_won = FALSE
     AND do.closedate IS NOT NULL
   GROUP BY mc.month_start, do.owner_id
 ),
