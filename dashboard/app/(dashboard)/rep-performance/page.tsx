@@ -1,13 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, Legend,
 } from 'recharts';
 
+// Raw row shape from the API (matches RepPerformanceRow in bigquery.ts)
+interface ApiRow {
+  month_start: string;
+  month_label: string;
+  owner_id: string;
+  owner_full_name: string;
+  deals_won: number;
+  deals_lost: number;
+  deals_entered: number;
+  pipeline_won_amount: number;
+  pipeline_entered_amount: number;
+  avg_deal_size: number;
+  win_rate_pct: number | null;
+  close_rate_pct: number | null;
+  _loaded_at: string;
+}
+
+// Aggregated per-rep shape used in the UI
 interface RepData {
+  ownerId: string;
   name: string;
   dealsClosed: number;
   pipelineValue: number;
@@ -16,23 +35,68 @@ interface RepData {
   activitiesLogged: number;
 }
 
-const sampleReps: RepData[] = [
-  { name: 'Sarah K.', dealsClosed: 14, pipelineValue: 420000, winRate: 38, avgDealSize: 30000, activitiesLogged: 87 },
-  { name: 'Mike R.', dealsClosed: 11, pipelineValue: 385000, winRate: 32, avgDealSize: 35000, activitiesLogged: 72 },
-  { name: 'Jessica L.', dealsClosed: 18, pipelineValue: 510000, winRate: 42, avgDealSize: 28333, activitiesLogged: 104 },
-  { name: 'David T.', dealsClosed: 9, pipelineValue: 290000, winRate: 28, avgDealSize: 32222, activitiesLogged: 65 },
-  { name: 'Emily W.', dealsClosed: 16, pipelineValue: 465000, winRate: 36, avgDealSize: 29063, activitiesLogged: 93 },
-];
-
 export default function RepPerformancePage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reps, setReps] = useState<RepData[]>([]);
   const [sortBy, setSortBy] = useState<keyof RepData>('dealsClosed');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/rep-performance');
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+      const result = await response.json();
+      const rows: ApiRow[] = result.data ?? [];
+
+      // Aggregate monthly rows into per-rep totals
+      const byOwner = new Map<string, RepData>();
+      for (const row of rows) {
+        const existing = byOwner.get(row.owner_id);
+        if (existing) {
+          existing.dealsClosed += row.deals_won;
+          existing.pipelineValue += row.pipeline_won_amount;
+          existing.activitiesLogged += row.deals_entered;
+          // We'll recompute avgDealSize and winRate after aggregation
+        } else {
+          byOwner.set(row.owner_id, {
+            ownerId: row.owner_id,
+            name: row.owner_full_name || `Owner ${row.owner_id}`,
+            dealsClosed: row.deals_won,
+            pipelineValue: row.pipeline_won_amount,
+            winRate: 0, // placeholder
+            avgDealSize: 0, // placeholder
+            activitiesLogged: row.deals_entered,
+          });
+        }
+      }
+
+      // Compute derived metrics
+      const repList = Array.from(byOwner.values()).map((r) => ({
+        ...r,
+        avgDealSize: r.dealsClosed > 0 ? Math.round(r.pipelineValue / r.dealsClosed) : 0,
+        // Win rate as percentage — approximate from totals (won / entered)
+        winRate: r.activitiesLogged > 0
+          ? Math.round((r.dealsClosed / r.activitiesLogged) * 100)
+          : 0,
+      }));
+
+      setReps(repList);
+    } catch (err) {
+      console.error('Failed to fetch rep performance data:', err);
+      setError('Failed to load rep performance data. Please refresh the page.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -42,7 +106,17 @@ export default function RepPerformancePage() {
     );
   }
 
-  const sortedReps = [...sampleReps].sort((a, b) => {
+  if (error) {
+    return (
+      <div className="card mt-8">
+        <div className="text-center py-8">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const sortedReps = [...reps].sort((a, b) => {
     const aVal = a[sortBy];
     const bVal = b[sortBy];
     const dir = sortDir === 'asc' ? 1 : -1;
@@ -62,17 +136,23 @@ export default function RepPerformancePage() {
   const sortIcon = (col: keyof RepData) =>
     sortBy === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕';
 
-  const totalDeals = sampleReps.reduce((s, r) => s + r.dealsClosed, 0);
-  const totalPipeline = sampleReps.reduce((s, r) => s + r.pipelineValue, 0);
-  const avgWinRate = Math.round(sampleReps.reduce((s, r) => s + r.winRate, 0) / sampleReps.length);
-  const topRep = sampleReps.reduce((best, r) => r.dealsClosed > best.dealsClosed ? r : best);
+  const totalDeals = reps.reduce((s, r) => s + r.dealsClosed, 0);
+  const totalPipeline = reps.reduce((s, r) => s + r.pipelineValue, 0);
+  const avgWinRate = reps.length > 0
+    ? Math.round(reps.reduce((s, r) => s + r.winRate, 0) / reps.length)
+    : 0;
+  const topRep = reps.reduce((best, r) => r.dealsClosed > best.dealsClosed ? r : best, reps[0]);
 
-  const radarData = sampleReps.map((r) => ({
+  const maxDeals = Math.max(...reps.map((r) => r.dealsClosed), 1);
+  const maxActivities = Math.max(...reps.map((r) => r.activitiesLogged), 1);
+  const maxAvgSize = Math.max(...reps.map((r) => r.avgDealSize), 1);
+
+  const radarData = reps.map((r) => ({
     name: r.name,
-    deals: Math.round((r.dealsClosed / 20) * 100),
+    deals: Math.round((r.dealsClosed / maxDeals) * 100),
     winRate: r.winRate,
-    activities: Math.round((r.activitiesLogged / 120) * 100),
-    avgSize: Math.round((r.avgDealSize / 40000) * 100),
+    activities: Math.round((r.activitiesLogged / maxActivities) * 100),
+    avgSize: Math.round((r.avgDealSize / maxAvgSize) * 100),
   }));
 
   return (
@@ -85,150 +165,135 @@ export default function RepPerformancePage() {
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="card-glow">
-          <p className="text-[11px] uppercase tracking-widest mb-2">Total Deals Closed</p>
-          <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">{totalDeals}</p>
+      {reps.length === 0 ? (
+        <div className="card mt-8">
+          <div className="text-center py-8">
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+              No rep performance data available yet. Data will appear once deals are synced from HubSpot.
+            </p>
+          </div>
         </div>
-        <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
-          <p className="text-[11px] uppercase tracking-widest mb-2">Total Pipeline</p>
-          <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">
-            ${(totalPipeline / 1000000).toFixed(1)}M
-          </p>
-        </div>
-        <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
-          <p className="text-[11px] uppercase tracking-widest mb-2">Avg Win Rate</p>
-          <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">{avgWinRate}%</p>
-        </div>
-        <div className="card-glow" style={{ borderTopColor: "#8b5cf6" }}>
-          <p className="text-[11px] uppercase tracking-widest mb-2">Top Performer</p>
-          <p className="text-2xl font-bold text-purple-600">{topRep.name}</p>
-          <p className="text-[11px] mt-1.5">{topRep.dealsClosed} deals closed</p>
-        </div>
-      </div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="card-glow">
+              <p className="text-[11px] uppercase tracking-widest mb-2">Total Deals Closed</p>
+              <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">{totalDeals}</p>
+            </div>
+            <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
+              <p className="text-[11px] uppercase tracking-widest mb-2">Total Pipeline Won</p>
+              <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">
+                ${(totalPipeline / 1000000).toFixed(1)}M
+              </p>
+            </div>
+            <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
+              <p className="text-[11px] uppercase tracking-widest mb-2">Avg Win Rate</p>
+              <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">{avgWinRate}%</p>
+            </div>
+            <div className="card-glow" style={{ borderTopColor: "#8b5cf6" }}>
+              <p className="text-[11px] uppercase tracking-widest mb-2">Top Performer</p>
+              <p className="text-2xl font-bold text-purple-600">{topRep?.name ?? '—'}</p>
+              <p className="text-[11px] mt-1.5">{topRep?.dealsClosed ?? 0} deals closed</p>
+            </div>
+          </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-1">Deals Closed by Rep</h3>
-          <p className="text-sm mb-4">Number of deals closed per sales representative</p>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={sampleReps} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-              <XAxis type="number" tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
-              <YAxis dataKey="name" type="category" width={80} tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
-              <Tooltip />
-              <Bar dataKey="dealsClosed" name="Deals" fill="#22d3ee" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-1">Deals Closed by Rep</h3>
+              <p className="text-sm mb-4">Number of deals closed per sales representative</p>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={reps} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
+                  <XAxis type="number" tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={120} tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
+                  <Tooltip />
+                  <Bar dataKey="dealsClosed" name="Deals" fill="#22d3ee" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-1">Performance Radar</h3>
-          <p className="text-sm mb-4">Normalized score (0-100) across key metrics</p>
-          <ResponsiveContainer width="100%" height={280}>
-            <RadarChart data={radarData}>
-              <PolarGrid />
-              <PolarAngleAxis dataKey="name" tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 11 }} />
-              <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-              <Radar name="Deals" dataKey="deals" stroke="#1e40af" fill="#22d3ee" fillOpacity={0.2} />
-              <Radar name="Win Rate" dataKey="winRate" stroke="#059669" fill="#059669" fillOpacity={0.15} />
-              <Legend />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-1">Performance Radar</h3>
+              <p className="text-sm mb-4">Normalized score (0-100) across key metrics</p>
+              <ResponsiveContainer width="100%" height={280}>
+                <RadarChart data={radarData}>
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="name" tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 11 }} />
+                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
+                  <Radar name="Deals" dataKey="deals" stroke="#1e40af" fill="#22d3ee" fillOpacity={0.2} />
+                  <Radar name="Win Rate" dataKey="winRate" stroke="#059669" fill="#059669" fillOpacity={0.15} />
+                  <Legend />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-      {/* Rep Table */}
-      <div className="card overflow-hidden">
-        <h3 className="text-lg font-semibold mb-4">
-          Rep Details ({sampleReps.length} reps)
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="dashboard-table">
-            <thead className="">
-              <tr>
-                <th
-                  className=""
-                  onClick={() => handleSort('name')}
-                >
-                  Rep{sortIcon('name')}
-                </th>
-                <th
-                  className="" style={{ textAlign: "right" }}
-                  onClick={() => handleSort('dealsClosed')}
-                >
-                  Deals{sortIcon('dealsClosed')}
-                </th>
-                <th
-                  className="" style={{ textAlign: "right" }}
-                  onClick={() => handleSort('pipelineValue')}
-                >
-                  Pipeline{sortIcon('pipelineValue')}
-                </th>
-                <th
-                  className="" style={{ textAlign: "right" }}
-                  onClick={() => handleSort('winRate')}
-                >
-                  Win Rate{sortIcon('winRate')}
-                </th>
-                <th
-                  className="" style={{ textAlign: "right" }}
-                  onClick={() => handleSort('avgDealSize')}
-                >
-                  Avg Deal{sortIcon('avgDealSize')}
-                </th>
-                <th
-                  className="" style={{ textAlign: "right" }}
-                  onClick={() => handleSort('activitiesLogged')}
-                >
-                  Activities{sortIcon('activitiesLogged')}
-                </th>
-              </tr>
-            </thead>
-            <tbody >
-              {sortedReps.map((rep) => (
-                <tr key={rep.name} >
-                  <td className="" style={{ fontWeight: 500, color: "var(--text-primary)" }}>
-                    {rep.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 font-mono tabular-nums">
-                    {rep.dealsClosed}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 font-mono tabular-nums">
-                    ${(rep.pipelineValue / 1000).toFixed(0)}K
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      rep.winRate >= 35 ? 'bg-green-100 text-green-800' :
-                      rep.winRate >= 25 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {rep.winRate}%
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 font-mono tabular-nums">
-                    ${rep.avgDealSize.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 font-mono tabular-nums">
-                    {rep.activitiesLogged}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Data source notice */}
-      <div className="card mt-6">
-        <div className="text-center py-4">
-          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-            Sample data shown. Connect a CRM or BigQuery data source for live rep performance metrics.
-          </p>
-        </div>
-      </div>
+          {/* Rep Table */}
+          <div className="card overflow-hidden">
+            <h3 className="text-lg font-semibold mb-4">
+              Rep Details ({reps.length} reps)
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="dashboard-table">
+                <thead>
+                  <tr>
+                    <th onClick={() => handleSort('name')}>
+                      Rep{sortIcon('name')}
+                    </th>
+                    <th style={{ textAlign: "right" }} onClick={() => handleSort('dealsClosed')}>
+                      Deals{sortIcon('dealsClosed')}
+                    </th>
+                    <th style={{ textAlign: "right" }} onClick={() => handleSort('pipelineValue')}>
+                      Pipeline Won{sortIcon('pipelineValue')}
+                    </th>
+                    <th style={{ textAlign: "right" }} onClick={() => handleSort('winRate')}>
+                      Win Rate{sortIcon('winRate')}
+                    </th>
+                    <th style={{ textAlign: "right" }} onClick={() => handleSort('avgDealSize')}>
+                      Avg Deal{sortIcon('avgDealSize')}
+                    </th>
+                    <th style={{ textAlign: "right" }} onClick={() => handleSort('activitiesLogged')}>
+                      Deals Entered{sortIcon('activitiesLogged')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedReps.map((rep) => (
+                    <tr key={rep.ownerId}>
+                      <td style={{ fontWeight: 500, color: "var(--text-primary)" }}>
+                        {rep.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 font-mono tabular-nums">
+                        {rep.dealsClosed}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 font-mono tabular-nums">
+                        ${(rep.pipelineValue / 1000).toFixed(0)}K
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          rep.winRate >= 35 ? 'bg-green-100 text-green-800' :
+                          rep.winRate >= 25 ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {rep.winRate}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 font-mono tabular-nums">
+                        ${rep.avgDealSize.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 font-mono tabular-nums">
+                        {rep.activitiesLogged}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
