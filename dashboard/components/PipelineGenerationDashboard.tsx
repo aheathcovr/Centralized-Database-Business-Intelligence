@@ -208,8 +208,8 @@ export default function PipelineGenerationDashboard() {
       </div>
 
       {error && (
-        <div className="card mb-6" style={{ borderTop: "2px solid #ef4444" }}>
-          <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>
+        <div className="card mb-6" style={{ borderTop: "2px solid #F47C44" }}>
+          <p className="text-sm" style={{ color: "#F47C44" }}>{error}</p>
         </div>
       )}
 
@@ -227,17 +227,17 @@ export default function PipelineGenerationDashboard() {
             ${(totalPipeline / 1000).toFixed(0)}K
           </p>
         </div>
-        <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
+        <div className="card-glow" style={{ borderTopColor: "#3B7E6B" }}>
           <p className="text-[11px] uppercase tracking-widest mb-2">Deals Created</p>
           <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">{totalDeals}</p>
         </div>
-        <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
+        <div className="card-glow" style={{ borderTopColor: "#26A2DC" }}>
           <p className="text-[11px] uppercase tracking-widest mb-2">Avg Deal Size</p>
           <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">
             ${avgDealSize.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
         </div>
-        <div className="card-glow" style={{ borderTopColor: "#8b5cf6" }}>
+        <div className="card-glow" style={{ borderTopColor: "#A67FB9" }}>
           <p className="text-[11px] uppercase tracking-widest mb-2">Meetings Booked</p>
           <p className="text-3xl font-bold text-purple-600 font-mono tabular-nums">
             {totalMeetings}
@@ -310,15 +310,15 @@ export default function PipelineGenerationDashboard() {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={periodTotals}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-              <XAxis dataKey="period_label" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
+              <XAxis dataKey="period_label" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
               <YAxis
                 tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`}
-                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
               />
               <Tooltip
                 formatter={(value: number) => [`$${value.toLocaleString()}`, 'Pipeline Amount']}
               />
-              <Bar dataKey="total_pipeline_amount" name="Pipeline" fill="#22d3ee" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="total_pipeline_amount" name="Pipeline" fill="#1570B6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -329,12 +329,12 @@ export default function PipelineGenerationDashboard() {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={periodTotals}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-              <XAxis dataKey="period_label" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
-              <YAxis tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
+              <XAxis dataKey="period_label" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
+              <YAxis tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="total_deals_created" name="Deals" fill="#059669" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="total_meetings_booked" name="Meetings" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="total_deals_created" name="Deals" fill="#3B7E6B" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="total_meetings_booked" name="Meetings" fill="#A67FB9" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -351,16 +351,16 @@ export default function PipelineGenerationDashboard() {
               <XAxis
                 type="number"
                 tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`}
-                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
               />
               <YAxis
                 dataKey="name"
                 type="category"
                 width={120}
-                tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
               />
               <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, 'Pipeline']} />
-              <Bar dataKey="total_pipeline" name="Pipeline" fill="#22d3ee" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="total_pipeline" name="Pipeline" fill="#1570B6" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -371,17 +371,17 @@ export default function PipelineGenerationDashboard() {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={repTotals} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-              <XAxis type="number" tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
+              <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
               <YAxis
                 dataKey="name"
                 type="category"
                 width={120}
-                tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
               />
               <Tooltip />
               <Legend />
-              <Bar dataKey="total_deals" name="Deals" fill="#059669" radius={[0, 4, 4, 0]} />
-              <Bar dataKey="total_meetings" name="Meetings" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="total_deals" name="Deals" fill="#3B7E6B" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="total_meetings" name="Meetings" fill="#A67FB9" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

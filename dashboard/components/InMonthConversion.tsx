@@ -57,20 +57,20 @@ interface InMonthConversionProps {
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const SOM_CHART_COLORS = {
-  expected: '#1e40af',
-  won: '#059669',
-  lost: '#dc2626',
-  pushed: '#d97706',
+  expected: '#1570B6',
+  won: '#3B7E6B',
+  lost: '#F47C44',
+  pushed: '#F47C44',
 };
 
 const WON_ORIGIN_COLORS = {
-  expected: '#1e40af',
-  pulledForward: '#059669',
-  created: '#7c3aed',
+  expected: '#1570B6',
+  pulledForward: '#3B7E6B',
+  created: '#A67FB9',
 };
 
-const CONVERSION_BAR_COLOR = '#059669';
-const CONVERSION_THRESHOLD_COLOR = '#dc2626';
+const CONVERSION_BAR_COLOR = '#3B7E6B';
+const CONVERSION_THRESHOLD_COLOR = '#F47C44';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -222,7 +222,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
               d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
             />
           </svg>
-          <p className="font-medium mb-3" style={{ color: "#ef4444" }}>{error}</p>
+          <p className="font-medium mb-3" style={{ color: "#F47C44" }}>{error}</p>
           <button onClick={fetchData} className="btn-primary text-sm">
             Retry
           </button>
@@ -240,7 +240,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-covr-blue rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-[#1570B6] rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold">C</span>
               </div>
               <div>
@@ -415,26 +415,26 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis
                     dataKey="month"
-                    tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
+                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
                   />
                   <YAxis
-                    tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
                   />
                   <Tooltip content={<SomTooltip />} />
                   <Legend
-                    wrapperStyle={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }}
+                    wrapperStyle={{ fontFamily: 'var(--font-primary-sans)', fontSize: 12 }}
                   />
                   <Bar dataKey="Expected" fill={SOM_CHART_COLORS.expected} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Expected" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }} />
+                    <LabelList dataKey="Expected" position="top" style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 10, fill: '#696F7B' }} />
                   </Bar>
                   <Bar dataKey="Won" fill={SOM_CHART_COLORS.won} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Won" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }} />
+                    <LabelList dataKey="Won" position="top" style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 10, fill: '#696F7B' }} />
                   </Bar>
                   <Bar dataKey="Lost" fill={SOM_CHART_COLORS.lost} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Lost" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }} />
+                    <LabelList dataKey="Lost" position="top" style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 10, fill: '#696F7B' }} />
                   </Bar>
                   <Bar dataKey="Pushed" fill={SOM_CHART_COLORS.pushed} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Pushed" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }} />
+                    <LabelList dataKey="Pushed" position="top" style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 10, fill: '#696F7B' }} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -573,14 +573,14 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis
                     dataKey="month"
-                    tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
+                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
                   />
                   <YAxis
-                    tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
                   />
                   <Tooltip content={<SomTooltip />} />
                   <Legend
-                    wrapperStyle={{ fontFamily: 'var(--font-fira-sans)', fontSize: 12 }}
+                    wrapperStyle={{ fontFamily: 'var(--font-primary-sans)', fontSize: 12 }}
                   />
                   <Bar dataKey="Won from Expected" stackId="won" fill={WON_ORIGIN_COLORS.expected} radius={[0, 0, 0, 0]} />
                   <Bar dataKey="Pulled Forward / Created" stackId="won" fill={WON_ORIGIN_COLORS.pulledForward} radius={[3, 3, 0, 0]} />
@@ -748,12 +748,12 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis
                     dataKey="month"
-                    tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
+                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
                   />
                   <YAxis
                     domain={[0, 100]}
                     tickFormatter={(v) => `${v}%`}
-                    tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
                   />
                   <Tooltip
                     formatter={(value: any) => [
@@ -761,7 +761,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                       'Conversion',
                     ]}
                     contentStyle={{
-                      fontFamily: 'var(--font-fira-sans)',
+                      fontFamily: 'var(--font-primary-sans)',
                       fontSize: 12,
                       borderRadius: 8,
                     }}
@@ -786,7 +786,7 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                       dataKey="conversion"
                       position="top"
                       formatter={(v: number | null) => (v != null ? `${v}%` : '')}
-                      style={{ fontFamily: 'var(--font-fira-code)', fontSize: 11, fill: '#94a3b8' }}
+                      style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 11, fill: '#696F7B' }}
                     />
                   </Bar>
                 </BarChart>

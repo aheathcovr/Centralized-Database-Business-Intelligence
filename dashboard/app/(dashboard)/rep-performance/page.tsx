@@ -181,17 +181,17 @@ export default function RepPerformancePage() {
               <p className="text-[11px] uppercase tracking-widest mb-2">Total Deals Closed</p>
               <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">{totalDeals}</p>
             </div>
-            <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
+            <div className="card-glow" style={{ borderTopColor: "#3B7E6B" }}>
               <p className="text-[11px] uppercase tracking-widest mb-2">Total Pipeline Won</p>
               <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">
                 ${(totalPipeline / 1000000).toFixed(1)}M
               </p>
             </div>
-            <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
+            <div className="card-glow" style={{ borderTopColor: "#26A2DC" }}>
               <p className="text-[11px] uppercase tracking-widest mb-2">Avg Win Rate</p>
               <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">{avgWinRate}%</p>
             </div>
-            <div className="card-glow" style={{ borderTopColor: "#8b5cf6" }}>
+            <div className="card-glow" style={{ borderTopColor: "#A67FB9" }}>
               <p className="text-[11px] uppercase tracking-widest mb-2">Top Performer</p>
               <p className="text-2xl font-bold text-purple-600">{topRep?.name ?? '—'}</p>
               <p className="text-[11px] mt-1.5">{topRep?.dealsClosed ?? 0} deals closed</p>
@@ -206,10 +206,10 @@ export default function RepPerformancePage() {
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={reps} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-                  <XAxis type="number" tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
+                  <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={120} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
                   <Tooltip />
-                  <Bar dataKey="dealsClosed" name="Deals" fill="#22d3ee" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="dealsClosed" name="Deals" fill="#1570B6" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -220,10 +220,10 @@ export default function RepPerformancePage() {
               <ResponsiveContainer width="100%" height={280}>
                 <RadarChart data={radarData}>
                   <PolarGrid />
-                  <PolarAngleAxis dataKey="name" tick={{ fontFamily: 'var(--font-fira-sans)', fontSize: 11 }} />
+                  <PolarAngleAxis dataKey="name" tick={{ fontFamily: 'var(--font-primary-sans)', fontSize: 11 }} />
                   <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  <Radar name="Deals" dataKey="deals" stroke="#1e40af" fill="#22d3ee" fillOpacity={0.2} />
-                  <Radar name="Win Rate" dataKey="winRate" stroke="#059669" fill="#059669" fillOpacity={0.15} />
+                  <Radar name="Deals" dataKey="deals" stroke="#1570B6" fill="#1570B6" fillOpacity={0.2} />
+                  <Radar name="Win Rate" dataKey="winRate" stroke="#3B7E6B" fill="#3B7E6B" fillOpacity={0.15} />
                   <Legend />
                 </RadarChart>
               </ResponsiveContainer>

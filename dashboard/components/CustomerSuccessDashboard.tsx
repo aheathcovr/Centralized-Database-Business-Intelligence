@@ -78,10 +78,10 @@ interface CustomerSuccessData {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  Active: '#10b981',
-  Implementation: '#3b82f6',
-  Stalled: '#f59e0b',
-  Churned: '#ef4444',
+  Active: '#3B7E6B',
+  Implementation: '#1570B6',
+  Stalled: '#F47C44',
+  Churned: '#F47C44',
   Offboarding: '#64748b',
 };
 
@@ -124,7 +124,7 @@ export default function CustomerSuccessDashboard() {
           <svg className="w-8 h-8 text-red-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
-          <p className="font-medium mb-3" style={{ color: '#ef4444' }}>{error}</p>
+          <p className="font-medium mb-3" style={{ color: '#F47C44' }}>{error}</p>
           <button onClick={fetchData} className="btn-primary text-sm">Retry</button>
         </div>
       </div>
@@ -168,28 +168,28 @@ export default function CustomerSuccessDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="card-glow" style={{ borderTopColor: '#8b5cf6' }}>
+          <div className="card-glow" style={{ borderTopColor: '#A67FB9' }}>
             <p className="text-[11px] uppercase tracking-widest mb-2">Avg CSAT Score</p>
             <p className="text-3xl font-bold text-purple-600 font-mono tabular-nums">
               {data.summary.avgCsatScore != null ? Math.round(data.summary.avgCsatScore) + '%' : 'N/A'}
             </p>
             <p className="text-[11px] mt-1.5">{data.summary.totalCsatResponses} total responses</p>
           </div>
-          <div className="card-glow" style={{ borderTopColor: '#0891b2' }}>
+          <div className="card-glow" style={{ borderTopColor: '#26A2DC' }}>
             <p className="text-[11px] uppercase tracking-widest mb-2">Avg NPS Score</p>
             <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">
               {data.summary.avgNpsScore != null ? Math.round(data.summary.avgNpsScore) : 'N/A'}
             </p>
             <p className="text-[11px] mt-1.5">{data.summary.totalNpsResponses} total responses</p>
           </div>
-          <div className="card-glow" style={{ borderTopColor: '#3b82f6' }}>
+          <div className="card-glow" style={{ borderTopColor: '#1570B6' }}>
             <p className="text-[11px] uppercase tracking-widest mb-2">In Implementation</p>
             <p className="text-3xl font-bold text-blue-600 font-mono tabular-nums">
               {data.summary.inImplementation}
             </p>
             <p className="text-[11px] mt-1.5">+ {data.summary.stalledCount} stalled</p>
           </div>
-          <div className="card-glow" style={{ borderTopColor: '#10b981' }}>
+          <div className="card-glow" style={{ borderTopColor: '#3B7E6B' }}>
             <p className="text-[11px] uppercase tracking-widest mb-2">Active Accounts</p>
             <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">
               {data.summary.activeCount}
@@ -222,14 +222,14 @@ export default function CustomerSuccessDashboard() {
           <ResponsiveContainer width="100%" height={340}>
             <ComposedChart data={csatChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-              <XAxis dataKey="label" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} angle={-45} textAnchor="end" height={60} />
-              <YAxis yAxisId="count" tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} allowDecimals={false} />
-              <YAxis yAxisId="pct" orientation="right" domain={[0, 100]} tickFormatter={v => v + '%'} tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
-              <Tooltip contentStyle={{ fontFamily: 'var(--font-fira-sans)', fontSize: 13 }} formatter={(value: any, name: string) => { if (name === 'CSAT %' && value != null) return [value + '%', name]; return [value ?? 'N/A', name]; }} />
+              <XAxis dataKey="label" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} angle={-45} textAnchor="end" height={60} />
+              <YAxis yAxisId="count" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} allowDecimals={false} />
+              <YAxis yAxisId="pct" orientation="right" domain={[0, 100]} tickFormatter={v => v + '%'} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+              <Tooltip contentStyle={{ fontFamily: 'var(--font-primary-sans)', fontSize: 13 }} formatter={(value: any, name: string) => { if (name === 'CSAT %' && value != null) return [value + '%', name]; return [value ?? 'N/A', name]; }} />
               <Legend formatter={value => <span className="text-sm text-gray-700">{value}</span>} />
-              <Bar dataKey="Positive" yAxisId="count" stackId="csat" fill="#059669" />
-              <Bar dataKey="Negative" yAxisId="count" stackId="csat" fill="#dc2626" radius={[2, 2, 0, 0]} />
-              <Line type="monotone" dataKey="Score" yAxisId="pct" name="CSAT %" stroke="#7c3aed" strokeWidth={2} dot={{ r: 3, fill: '#7c3aed' }} connectNulls />
+              <Bar dataKey="Positive" yAxisId="count" stackId="csat" fill="#3B7E6B" />
+              <Bar dataKey="Negative" yAxisId="count" stackId="csat" fill="#F47C44" radius={[2, 2, 0, 0]} />
+              <Line type="monotone" dataKey="Score" yAxisId="pct" name="CSAT %" stroke="#A67FB9" strokeWidth={2} dot={{ r: 3, fill: '#A67FB9' }} connectNulls />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -242,14 +242,14 @@ export default function CustomerSuccessDashboard() {
             <ResponsiveContainer width="100%" height={340}>
               <ComposedChart data={npsChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-                <XAxis dataKey="label" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} angle={-45} textAnchor="end" height={60} />
-                <YAxis yAxisId="count" tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} allowDecimals={false} />
-                <YAxis yAxisId="pct" orientation="right" domain={[-100, 100]} tickFormatter={v => v + ''} tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
-                <Tooltip contentStyle={{ fontFamily: 'var(--font-fira-sans)', fontSize: 13 }} />
+                <XAxis dataKey="label" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} angle={-45} textAnchor="end" height={60} />
+                <YAxis yAxisId="count" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} allowDecimals={false} />
+                <YAxis yAxisId="pct" orientation="right" domain={[-100, 100]} tickFormatter={v => v + ''} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+                <Tooltip contentStyle={{ fontFamily: 'var(--font-primary-sans)', fontSize: 13 }} />
                 <Legend formatter={value => <span className="text-sm text-gray-700">{value}</span>} />
-                <Bar dataKey="Promoters" yAxisId="count" stackId="nps" fill="#059669" />
-                <Bar dataKey="Passives" yAxisId="count" stackId="nps" fill="#f59e0b" />
-                <Bar dataKey="Detractors" yAxisId="count" stackId="nps" fill="#dc2626" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="Promoters" yAxisId="count" stackId="nps" fill="#3B7E6B" />
+                <Bar dataKey="Passives" yAxisId="count" stackId="nps" fill="#F47C44" />
+                <Bar dataKey="Detractors" yAxisId="count" stackId="nps" fill="#F47C44" radius={[2, 2, 0, 0]} />
                 <Line type="monotone" dataKey="Score" yAxisId="pct" name="NPS" stroke="#0d9488" strokeWidth={2} dot={{ r: 3, fill: '#0d9488' }} connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
@@ -271,12 +271,12 @@ export default function CustomerSuccessDashboard() {
             <ResponsiveContainer width="100%" height={Math.max(300, csatDomainChartData.length * 30)}>
               <BarChart data={csatDomainChartData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-                <XAxis type="number" tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
-                <YAxis dataKey="domain" type="category" width={200} tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 11 }} />
-                <Tooltip contentStyle={{ fontFamily: 'var(--font-fira-sans)', fontSize: 13 }} formatter={(value: any, name: string) => { if (name === 'Score' && value != null) return [value + '%', name]; return [value ?? 'N/A', name]; }} />
+                <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+                <YAxis dataKey="domain" type="category" width={200} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+                <Tooltip contentStyle={{ fontFamily: 'var(--font-primary-sans)', fontSize: 13 }} formatter={(value: any, name: string) => { if (name === 'Score' && value != null) return [value + '%', name]; return [value ?? 'N/A', name]; }} />
                 <Legend formatter={value => <span className="text-sm text-gray-700">{value}</span>} />
-                <Bar dataKey="Positive" fill="#059669" />
-                <Bar dataKey="Negative" fill="#dc2626" />
+                <Bar dataKey="Positive" fill="#3B7E6B" />
+                <Bar dataKey="Negative" fill="#F47C44" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -352,8 +352,8 @@ export default function CustomerSuccessDashboard() {
                       </span>
                     </td>
                     <td>{corp.product_mix}</td>
-                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-fira-code)' }}>{corp.total_facilities}</td>
-                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-fira-code)' }}>{corp.facilities_in_dh}</td>
+                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-primary-sans)' }}>{corp.total_facilities}</td>
+                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-primary-sans)' }}>{corp.facilities_in_dh}</td>
                     <td>{corp.go_live_date ? new Date(corp.go_live_date).toLocaleDateString('en-US') : '—'}</td>
                     <td>{corp.onboarding_start_date ? new Date(corp.onboarding_start_date).toLocaleDateString('en-US') : '—'}</td>
                     <td>
@@ -398,7 +398,7 @@ export default function CustomerSuccessDashboard() {
                         </span>
                       </td>
                       <td>{fac.product_mix}</td>
-                      <td style={{ textAlign: 'right', fontFamily: 'var(--font-fira-code)' }}>{fac.total_facilities}</td>
+                      <td style={{ textAlign: 'right', fontFamily: 'var(--font-primary-sans)' }}>{fac.total_facilities}</td>
                       <td>{fac.go_live_date ? new Date(fac.go_live_date).toLocaleDateString('en-US') : '—'}</td>
                       <td>
                         {fac.hubspot_url && (
@@ -431,10 +431,10 @@ export default function CustomerSuccessDashboard() {
                 {filteredCsat.map((row) => (
                   <tr key={row.period_label}>
                     <td style={{ fontWeight: 500 }}>{row.period_label}</td>
-                    <td style={{ textAlign: 'right', color: '#059669', fontFamily: 'var(--font-fira-code)' }}>{row.csat_positive}</td>
-                    <td style={{ textAlign: 'right', color: '#dc2626', fontFamily: 'var(--font-fira-code)' }}>{row.csat_negative}</td>
-                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-fira-code)' }}>{row.csat_total}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 500, fontFamily: 'var(--font-fira-code)' }}>{row.csat_score_pct != null ? Math.round(row.csat_score_pct) + '%' : '—'}</td>
+                    <td style={{ textAlign: 'right', color: '#3B7E6B', fontFamily: 'var(--font-primary-sans)' }}>{row.csat_positive}</td>
+                    <td style={{ textAlign: 'right', color: '#F47C44', fontFamily: 'var(--font-primary-sans)' }}>{row.csat_negative}</td>
+                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-primary-sans)' }}>{row.csat_total}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 500, fontFamily: 'var(--font-primary-sans)' }}>{row.csat_score_pct != null ? Math.round(row.csat_score_pct) + '%' : '—'}</td>
                   </tr>
                 ))}
               </tbody>

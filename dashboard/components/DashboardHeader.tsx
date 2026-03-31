@@ -13,17 +13,17 @@ interface DashboardHeaderProps {
 
 export default function DashboardHeader({ user }: DashboardHeaderProps) {
   return (
-    <header className="border-b" style={{ borderColor: 'var(--border-subtle)', background: 'rgba(13,19,33,0.8)', backdropFilter: 'blur(12px)' }}>
+    <header className="border-b" style={{ borderColor: 'var(--border-subtle)', background: 'rgba(248,249,250,0.9)', backdropFilter: 'blur(12px)' }}>
       <div className="flex items-center justify-between px-6 py-3">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center lg:hidden" style={{ background: 'linear-gradient(135deg, #0891b2, #22d3ee)' }}>
-            <span className="font-bold text-sm" style={{ color: 'var(--bg-canvas)' }}>C</span>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center lg:hidden" style={{ background: 'linear-gradient(135deg, #26A2DC, #1570B6)' }}>
+            <span className="font-bold text-sm" style={{ color: '#FFFFFF' }}>C</span>
           </div>
           <ViewToggle />
         </div>
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#10b981', boxShadow: '0 0 8px rgba(16,185,129,0.5)' }} />
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3B7E6B', boxShadow: '0 0 8px rgba(16,185,129,0.5)' }} />
             <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Live</span>
           </div>
           <div className="text-right">

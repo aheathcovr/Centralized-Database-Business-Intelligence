@@ -41,14 +41,14 @@ interface Stats extends TimelineStats {
 }
 
 
-const COLORS = ['#22d3ee', '#0891b2', '#10b981', '#8b5cf6', '#ef4444'];
+const COLORS = ['#1570B6', '#26A2DC', '#3B7E6B', '#A67FB9', '#F47C44'];
 
 const STATUS_COLORS: Record<string, string> = {
-  Active: '#10b981',
-  Churned: '#ef4444',
-  Implementation: '#3b82f6',
-  Stalled: '#f59e0b',
-  Offboarding: '#64748b',
+  Active: '#3B7E6B',
+  Churned: '#F47C44',
+  Implementation: '#1570B6',
+  Stalled: '#A67FB9',
+  Offboarding: '#696F7B',
 };
 
 type TaskStatusFilter = 'all' | 'Active' | 'Churned' | 'Implementation' | 'Stalled' | 'Offboarding';
@@ -349,9 +349,9 @@ export default function Dashboard() {
                 {timelineFilteredStats.total_corporations}
               </p>
             </div>
-            <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
+            <div className="card-glow" style={{ borderTopColor: "#3B7E6B" }}>
               <p className="text-[11px] uppercase tracking-widest mb-2">Active</p>
-              <p className="text-3xl font-bold text-[#10b981] font-mono tabular-nums">
+              <p className="text-3xl font-bold text-[#3B7E6B] font-mono tabular-nums">
                 {timelineFilteredStats.active_status_count}
               </p>
             </div>
@@ -368,9 +368,9 @@ export default function Dashboard() {
                 {timelineFilteredStats.total_facilities?.toLocaleString() || 0}
               </p>
             </div>
-            <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
+            <div className="card-glow" style={{ borderTopColor: "#26A2DC" }}>
               <p className="text-[11px] uppercase tracking-widest mb-2">Definitive Healthcare</p>
-              <p className="text-3xl font-bold text-[#0891b2] font-mono tabular-nums">
+              <p className="text-3xl font-bold text-[#1570B6] font-mono tabular-nums">
                 {timelineFilteredStats.total_facilities_in_dh?.toLocaleString() || 0}
               </p>
             </div>
@@ -380,23 +380,23 @@ export default function Dashboard() {
         {/* GTM Penetration Tiers — Active accounts only */}
         {timelineFilteredCorporations.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="card p-5" style={{ borderTop: "2px solid #ef4444" }}>
+            <div className="card p-5" style={{ borderTop: "2px solid #F47C44" }}>
               <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1">Below 50% — Active</p>
-              <p className="text-2xl font-bold text-[#ef4444] font-mono tabular-nums">
+              <p className="text-2xl font-bold text-[#F47C44] font-mono tabular-nums">
                 {tierBelow50.length}<span className="text-sm font-normal ml-1">corps</span>
               </p>
               <p className="text-xs mt-1">{facilitiesBelow50.toLocaleString()} facilities</p>
             </div>
-            <div className="card p-5" style={{ borderTop: "2px solid #f59e0b" }}>
+            <div className="card p-5" style={{ borderTop: "2px solid #F47C44" }}>
               <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1">50–79% — Active</p>
-              <p className="text-2xl font-bold text-[#f59e0b] font-mono tabular-nums">
+              <p className="text-2xl font-bold text-[#F47C44] font-mono tabular-nums">
                 {tierMid.length}<span className="text-sm font-normal ml-1">corps</span>
               </p>
               <p className="text-xs mt-1">{facilitiesMid.toLocaleString()} facilities</p>
             </div>
-            <div className="card p-5" style={{ borderTop: "2px solid #10b981" }}>
+            <div className="card p-5" style={{ borderTop: "2px solid #3B7E6B" }}>
               <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1">≥ 80% — Active</p>
-              <p className="text-2xl font-bold text-[#10b981] font-mono tabular-nums">
+              <p className="text-2xl font-bold text-[#3B7E6B] font-mono tabular-nums">
                 {tierAbove80.length}<span className="text-sm font-normal ml-1">corps</span>
               </p>
               <p className="text-xs mt-1">{facilitiesAbove80.toLocaleString()} facilities</p>
@@ -420,11 +420,11 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={taskStatusData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-                <XAxis dataKey="name" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
-                <YAxis tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
+                <XAxis dataKey="name" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
+                <YAxis tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
                 <Tooltip />
-                <Bar dataKey="count" fill="#22d3ee">
-                  <LabelList dataKey="count" position="top" style={{ fontFamily: 'var(--font-fira-code)', fontSize: 12, fill: '#94a3b8' }} />
+                <Bar dataKey="count" fill="#1570B6">
+                  <LabelList dataKey="count" position="top" style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 12, fill: '#696F7B' }} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -471,11 +471,11 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={productDepthData} barSize={80}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="products" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 13 }} />
+                <XAxis dataKey="products" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 13 }} />
                 <YAxis
                   domain={[0, 100]}
                   tickFormatter={(v) => `${v}%`}
-                  tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                  tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
                 />
                 <Tooltip
                   formatter={(value) => [`${value}%`, 'Avg Penetration']}
@@ -491,13 +491,13 @@ export default function Dashboard() {
                     );
                   }}
                 />
-                <ReferenceLine y={80} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '80% target', position: 'right', fill: '#ef4444', fontSize: 11 }} />
-                <Bar dataKey="penetration" fill="#22d3ee" radius={[4, 4, 0, 0]}>
+                <ReferenceLine y={80} stroke="#F47C44" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '80% target', position: 'right', fill: '#F47C44', fontSize: 11 }} />
+                <Bar dataKey="penetration" fill="#1570B6" radius={[4, 4, 0, 0]}>
                   <LabelList
                     dataKey="penetration"
                     position="top"
                     formatter={(v: number) => `${v}%`}
-                    style={{ fontFamily: 'var(--font-fira-code)', fontSize: 13, fill: '#94a3b8', fontWeight: 600 }}
+                    style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 13, fill: '#696F7B', fontWeight: 600 }}
                   />
                 </Bar>
               </BarChart>
@@ -517,19 +517,19 @@ export default function Dashboard() {
             <BarChart data={penetrationData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-              <YAxis dataKey="name" type="category" width={160} tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
+              <YAxis dataKey="name" type="category" width={160} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
               <Tooltip
                 formatter={(value, name) => {
                   if (name === 'penetration') return [`${value}%`, 'Penetration'];
                   return [value, name];
                 }}
               />
-              <ReferenceLine x={80} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '80% target', position: 'top', fill: '#ef4444', fontSize: 11 }} />
+              <ReferenceLine x={80} stroke="#F47C44" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '80% target', position: 'top', fill: '#F47C44', fontSize: 11 }} />
               <Bar dataKey="penetration">
                 {penetrationData.map((entry: { name: string; penetration: number; facilities: number }, i: number) => (
                   <Cell
                     key={i}
-                    fill={entry.penetration >= 80 ? '#059669' : entry.penetration >= 50 ? '#d97706' : '#dc2626'}
+                    fill={entry.penetration >= 80 ? '#3B7E6B' : entry.penetration >= 50 ? '#F47C44' : '#F47C44'}
                   />
                 ))}
               </Bar>
@@ -561,7 +561,7 @@ export default function Dashboard() {
                   value === 'matched' ? 'In Definitive Healthcare' : 'Not Matched'
                 }
               />
-              <Bar dataKey="matched" stackId="a" fill="#0891b2" />
+              <Bar dataKey="matched" stackId="a" fill="#26A2DC" />
               <Bar dataKey="unmatched" stackId="a" fill="rgba(148,163,184,0.15)" />
             </BarChart>
           </ResponsiveContainer>
@@ -583,17 +583,17 @@ export default function Dashboard() {
                 type="number"
                 dataKey="won"
                 name="Facilities Won"
-                label={{ value: 'Facilities Won (Customers)', position: 'insideBottom', offset: -15, style: { fill: '#6b7280', fontSize: 12 } }}
+                label={{ value: 'Facilities Won (Customers)', position: 'insideBottom', offset: -15, style: { fill: '#696F7B', fontSize: 12 } }}
                 tickFormatter={(v: number) => v.toLocaleString()}
-                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
               />
               <YAxis
                 type="number"
                 dataKey="remaining"
                 name="Facilities Remaining"
-                label={{ value: 'Facilities Not Yet Won', angle: -90, position: 'insideLeft', offset: 15, style: { fill: '#6b7280', fontSize: 12 } }}
+                label={{ value: 'Facilities Not Yet Won', angle: -90, position: 'insideLeft', offset: 15, style: { fill: '#696F7B', fontSize: 12 } }}
                 tickFormatter={(v: number) => v.toLocaleString()}
-                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
               />
               <ZAxis type="number" dataKey="total" range={[40, 500]} name="Total Facilities" />
               <Tooltip
@@ -791,7 +791,7 @@ export default function Dashboard() {
                           href={`https://app.clickup.com/901302721443/v/li/901302721443/${corp.clickup_task_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs hover:underline" style={{ color: "#8b5cf6" }}
+                          className="text-xs hover:underline" style={{ color: "#A67FB9" }}
                         >
                           View in ClickUp
                         </a>

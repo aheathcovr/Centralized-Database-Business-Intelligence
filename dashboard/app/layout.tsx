@@ -1,19 +1,19 @@
 import type { Metadata } from 'next';
-import { Fira_Sans, Fira_Code } from 'next/font/google';
+import { Hepta_Slab, Nunito_Sans } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 
-const firaSans = Fira_Sans({
+const heptaSlab = Hepta_Slab({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-fira-sans',
+  variable: '--font-hepta-slab',
   display: 'swap',
 });
 
-const firaCode = Fira_Code({
+const nunitoSans = Nunito_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-fira-code',
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-nunito-sans',
   display: 'swap',
 });
 
@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${firaSans.variable} ${firaCode.variable}`}>
+    <html lang="en" className={`${heptaSlab.variable} ${nunitoSans.variable}`}>
       <body className="font-sans antialiased">
         <Providers>{children}</Providers>
       </body>

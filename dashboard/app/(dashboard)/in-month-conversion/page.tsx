@@ -154,8 +154,8 @@ export default function InMonthConversionPage() {
       </div>
 
       {error && (
-        <div className="card mb-6" style={{ borderTop: "2px solid #ef4444" }}>
-          <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>
+        <div className="card mb-6" style={{ borderTop: "2px solid #F47C44" }}>
+          <p className="text-sm" style={{ color: "#F47C44" }}>{error}</p>
         </div>
       )}
 
@@ -171,15 +171,15 @@ export default function InMonthConversionPage() {
           <p className="text-[11px] uppercase tracking-widest mb-2">Entering Expected</p>
           <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">{totalEntering}</p>
         </div>
-        <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
+        <div className="card-glow" style={{ borderTopColor: "#3B7E6B" }}>
           <p className="text-[11px] uppercase tracking-widest mb-2">Won</p>
           <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">{totalWon}</p>
         </div>
-        <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
+        <div className="card-glow" style={{ borderTopColor: "#26A2DC" }}>
           <p className="text-[11px] uppercase tracking-widest mb-2">Avg Conversion Rate</p>
           <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">{avgConversion}%</p>
         </div>
-        <div className="card-glow" style={{ borderTopColor: "#8b5cf6" }}>
+        <div className="card-glow" style={{ borderTopColor: "#A67FB9" }}>
           <p className="text-[11px] uppercase tracking-widest mb-2">Pushed</p>
           <p className="text-3xl font-bold text-purple-600 font-mono tabular-nums">{totalPushed}</p>
         </div>
@@ -193,13 +193,13 @@ export default function InMonthConversionPage() {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-              <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
-              <YAxis tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
+              <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
+              <YAxis tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="won" name="Won" fill="#059669" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="lost" name="Lost" fill="#dc2626" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="pushed" name="Pushed" fill="#d97706" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="won" name="Won" fill="#3B7E6B" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="lost" name="Lost" fill="#F47C44" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="pushed" name="Pushed" fill="#F47C44" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -210,15 +210,15 @@ export default function InMonthConversionPage() {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-              <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
+              <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
               <YAxis
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
-                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
               />
               <Tooltip formatter={(value) => [`${value}%`, 'Conversion Rate']} />
-              <ReferenceLine y={50} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '50% target', position: 'right', fill: '#ef4444', fontSize: 11 }} />
-              <Line type="monotone" dataKey="conversionRate" name="Rate" stroke="#1e40af" strokeWidth={2} dot={{ r: 5 }} />
+              <ReferenceLine y={50} stroke="#F47C44" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '50% target', position: 'right', fill: '#F47C44', fontSize: 11 }} />
+              <Line type="monotone" dataKey="conversionRate" name="Rate" stroke="#1570B6" strokeWidth={2} dot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

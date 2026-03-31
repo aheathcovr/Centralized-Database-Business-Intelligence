@@ -112,7 +112,7 @@ export default function SupportMetricsDashboard() {
           <svg className="w-8 h-8 text-red-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
-          <p className="font-medium mb-3" style={{ color: "#ef4444" }}>{error}</p>
+          <p className="font-medium mb-3" style={{ color: "#F47C44" }}>{error}</p>
           <button onClick={fetchData} className="btn-primary text-sm">
             Retry
           </button>
@@ -136,7 +136,7 @@ export default function SupportMetricsDashboard() {
                 {latest.year_week}
               </p>
             </div>
-            <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
+            <div className="card-glow" style={{ borderTopColor: "#3B7E6B" }}>
               <p className="text-[11px] uppercase tracking-widest mb-2">New Tickets</p>
               <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">
                 {latest.new_tickets}
@@ -145,7 +145,7 @@ export default function SupportMetricsDashboard() {
                 vs {latest.closed_tickets} closed
               </p>
             </div>
-            <div className="card-glow" style={{ borderTopColor: "#8b5cf6" }}>
+            <div className="card-glow" style={{ borderTopColor: "#A67FB9" }}>
               <p className="text-[11px] uppercase tracking-widest mb-2">CSAT Score</p>
               <p className="text-3xl font-bold text-purple-600 font-mono tabular-nums">
                 {latest.csat_score_pct != null
@@ -156,7 +156,7 @@ export default function SupportMetricsDashboard() {
                 {latest.csat_positive} positive / {latest.csat_negative} negative
               </p>
             </div>
-            <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
+            <div className="card-glow" style={{ borderTopColor: "#26A2DC" }}>
               <p className="text-[11px] uppercase tracking-widest mb-2">First Response</p>
               <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">
                 {latest.first_response_avg_minutes != null
@@ -186,19 +186,19 @@ export default function SupportMetricsDashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
                 dataKey="week"
-                tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
                 interval={0}
                 angle={-45}
                 textAnchor="end"
                 height={60}
               />
               <YAxis
-                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
                 allowDecimals={false}
               />
               <Tooltip
                 contentStyle={{
-                  fontFamily: 'var(--font-fira-sans)',
+                  fontFamily: 'var(--font-primary-sans)',
                   fontSize: 13,
                 }}
               />
@@ -207,7 +207,7 @@ export default function SupportMetricsDashboard() {
                   <span className="text-sm text-gray-700">{value}</span>
                 )}
               />
-              <Bar dataKey="New" fill="#059669" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="New" fill="#3B7E6B" radius={[2, 2, 0, 0]} />
               <Bar dataKey="Closed" fill="#64748b" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -226,7 +226,7 @@ export default function SupportMetricsDashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
                 dataKey="week"
-                tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
                 interval={0}
                 angle={-45}
                 textAnchor="end"
@@ -234,7 +234,7 @@ export default function SupportMetricsDashboard() {
               />
               <YAxis
                 yAxisId="count"
-                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
                 allowDecimals={false}
                 label={{
                   value: 'Responses',
@@ -248,7 +248,7 @@ export default function SupportMetricsDashboard() {
                 orientation="right"
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
-                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
                 label={{
                   value: 'CSAT %',
                   angle: 90,
@@ -258,7 +258,7 @@ export default function SupportMetricsDashboard() {
               />
               <Tooltip
                 contentStyle={{
-                  fontFamily: 'var(--font-fira-sans)',
+                  fontFamily: 'var(--font-primary-sans)',
                   fontSize: 13,
                 }}
                 formatter={(value: any, name: string) => {
@@ -275,14 +275,14 @@ export default function SupportMetricsDashboard() {
                 dataKey="Positive"
                 yAxisId="count"
                 stackId="csat"
-                fill="#059669"
+                fill="#3B7E6B"
                 radius={[0, 0, 0, 0]}
               />
               <Bar
                 dataKey="Negative"
                 yAxisId="count"
                 stackId="csat"
-                fill="#dc2626"
+                fill="#F47C44"
                 radius={[2, 2, 0, 0]}
               />
               <Line
@@ -290,9 +290,9 @@ export default function SupportMetricsDashboard() {
                 dataKey="Score"
                 yAxisId="pct"
                 name="CSAT %"
-                stroke="#7c3aed"
+                stroke="#A67FB9"
                 strokeWidth={2}
-                dot={{ r: 3, fill: '#7c3aed' }}
+                dot={{ r: 3, fill: '#A67FB9' }}
                 activeDot={{ r: 5 }}
                 connectNulls
               />
@@ -313,14 +313,14 @@ export default function SupportMetricsDashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
                 dataKey="week"
-                tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
                 interval={0}
                 angle={-45}
                 textAnchor="end"
                 height={60}
               />
               <YAxis
-                tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
                 tickFormatter={(v) => `${v}m`}
                 label={{
                   value: 'Minutes',
@@ -331,7 +331,7 @@ export default function SupportMetricsDashboard() {
               />
               <Tooltip
                 contentStyle={{
-                  fontFamily: 'var(--font-fira-sans)',
+                  fontFamily: 'var(--font-primary-sans)',
                   fontSize: 13,
                 }}
                 formatter={(value: any, name: string) => {
@@ -348,9 +348,9 @@ export default function SupportMetricsDashboard() {
                 type="monotone"
                 dataKey="avgMin"
                 name="Avg (min)"
-                stroke="#1e40af"
+                stroke="#1570B6"
                 strokeWidth={2}
-                dot={{ r: 3, fill: '#1e40af' }}
+                dot={{ r: 3, fill: '#1570B6' }}
                 activeDot={{ r: 5 }}
                 connectNulls
               />
@@ -413,29 +413,29 @@ export default function SupportMetricsDashboard() {
                         {row.year_week}
                       </span>
                     </td>
-                    <td className="" style={{ textAlign: "right", fontFamily: "var(--font-fira-code)" }}>
+                    <td className="" style={{ textAlign: "right", fontFamily: 'var(--font-primary-sans)' }}>
                       {row.new_tickets}
                     </td>
-                    <td className="" style={{ textAlign: "right", fontFamily: "var(--font-fira-code)" }}>
+                    <td className="" style={{ textAlign: "right", fontFamily: 'var(--font-primary-sans)' }}>
                       {row.closed_tickets}
                     </td>
-                    <td className="" style={{ textAlign: "right", color: "#10b981", fontFamily: "var(--font-fira-code)" }}>
+                    <td className="" style={{ textAlign: "right", color: "#3B7E6B", fontFamily: 'var(--font-primary-sans)' }}>
                       {row.csat_positive}
                     </td>
-                    <td className="" style={{ textAlign: "right", color: "#ef4444", fontFamily: "var(--font-fira-code)" }}>
+                    <td className="" style={{ textAlign: "right", color: "#F47C44", fontFamily: 'var(--font-primary-sans)' }}>
                       {row.csat_negative}
                     </td>
-                    <td className="" style={{ textAlign: "right", fontWeight: 500, fontFamily: "var(--font-fira-code)" }}>
+                    <td className="" style={{ textAlign: "right", fontWeight: 500, fontFamily: 'var(--font-primary-sans)' }}>
                       {row.csat_score_pct != null
                         ? `${Math.round(row.csat_score_pct)}%`
                         : '—'}
                     </td>
-                    <td className="" style={{ textAlign: "right", fontFamily: "var(--font-fira-code)" }}>
+                    <td className="" style={{ textAlign: "right", fontFamily: 'var(--font-primary-sans)' }}>
                       {row.first_response_avg_minutes != null
                         ? `${Math.round(row.first_response_avg_minutes * 10) / 10}m`
                         : '—'}
                     </td>
-                    <td className="" style={{ textAlign: "right", fontFamily: "var(--font-fira-code)" }}>
+                    <td className="" style={{ textAlign: "right", fontFamily: 'var(--font-primary-sans)' }}>
                       {row.first_response_median_minutes != null
                         ? `${Math.round(row.first_response_median_minutes * 10) / 10}m`
                         : '—'}

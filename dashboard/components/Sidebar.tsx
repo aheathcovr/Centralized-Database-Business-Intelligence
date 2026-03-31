@@ -77,15 +77,15 @@ export default function Sidebar() {
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center"
             style={{
-              background: 'linear-gradient(135deg, #0891b2, #22d3ee)',
-              boxShadow: '0 0 16px rgba(34,211,238,0.25)',
+              background: 'linear-gradient(135deg, #26A2DC, #1570B6)',
+              boxShadow: '0 0 16px rgba(21,112,182,0.25)',
             }}
           >
-            <span className="font-bold text-sm" style={{ color: 'var(--bg-canvas)' }}>C</span>
+            <span className="font-bold text-sm" style={{ color: '#FFFFFF' }}>C</span>
           </div>
           <div>
-            <h1 className="text-sm font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'Space Grotesk, sans-serif' }}>Covr BI</h1>
-            <p className="text-[10px] tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Penetration</p>
+            <h1 className="text-sm font-bold tracking-tight" style={{ color: '#FFFFFF', fontFamily: 'var(--font-primary-serif)' }}>Covr BI</h1>
+            <p className="text-[10px] tracking-widest uppercase" style={{ color: 'var(--color-navy-light)' }}>Penetration</p>
           </div>
         </div>
       </div>
@@ -109,7 +109,7 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-6 py-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-        <p className="text-[10px] tracking-wide" style={{ color: 'var(--text-muted)' }}>Covr Corporation</p>
+        <p className="text-[10px] tracking-wide" style={{ color: 'var(--color-navy-light)' }}>Covr Corporation</p>
       </div>
     </aside>
   );

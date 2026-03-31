@@ -10,13 +10,13 @@ export default function LoginPage() {
           <div
             className="w-16 h-16 rounded-xl mx-auto mb-5 flex items-center justify-center"
             style={{
-              background: 'linear-gradient(135deg, #0891b2, #22d3ee)',
-              boxShadow: '0 0 30px rgba(34,211,238,0.3)',
+              background: 'linear-gradient(135deg, #26A2DC, #1570B6)',
+              boxShadow: '0 0 30px rgba(21,112,182,0.3)',
             }}
           >
-            <span className="text-2xl font-bold" style={{ color: 'var(--bg-canvas)' }}>C</span>
+            <span className="text-2xl font-bold" style={{ color: '#FFFFFF' }}>C</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'Space Grotesk, sans-serif' }}>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-primary-serif)' }}>
             Covr Penetration Dashboard
           </h1>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>

@@ -51,7 +51,7 @@ const GROUP_MODES: { value: GroupMode; label: string }[] = [
 
 const DEFAULT_SELECTED_REPS = ['Charles', 'Logan', 'Bradi'];
 
-const CHART_COLORS = ['#22d3ee', '#0891b2', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b'];
+const CHART_COLORS = ['#1570B6', '#26A2DC', '#3B7E6B', '#A67FB9', '#F47C44', '#F47C44'];
 
 export default function PipelineManagementDashboard() {
   const [trailingWindow, setTrailingWindow] = useState<TrailingWindow>('90d');
@@ -227,7 +227,7 @@ export default function PipelineManagementDashboard() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center" role="alert" aria-live="assertive">
-          <p className="text-[#ef4444] font-medium mb-3">{error instanceof Error ? error.message : String(error)}</p>
+          <p className="text-[#F47C44] font-medium mb-3">{error instanceof Error ? error.message : String(error)}</p>
           <button onClick={fetchAllData} className="btn-primary text-sm" disabled={loading}>
             {loading ? 'Retrying...' : 'Retry'}
           </button>
@@ -257,7 +257,7 @@ export default function PipelineManagementDashboard() {
                   key={tw.value}
                   onClick={() => setTrailingWindow(tw.value)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 cursor-pointer ${trailingWindow === tw.value
-                      ? 'bg-accent text-canvas font-semibold shadow-[0_0_12px_rgba(34,211,238,0.25)]'
+                      ? 'bg-accent text-[#283242] font-semibold shadow-[0_0_12px_rgba(21,112,182,0.25)]'
                       : 'bg-elevated text-text-secondary hover:bg-card-hover hover:text-text-primary border border-[var(--border-subtle)]'
                     }`}
                 >
@@ -277,7 +277,7 @@ export default function PipelineManagementDashboard() {
                   key={gm.value}
                   onClick={() => setGroupMode(gm.value)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 cursor-pointer ${groupMode === gm.value
-                      ? 'bg-accent text-canvas font-semibold shadow-[0_0_12px_rgba(34,211,238,0.25)]'
+                      ? 'bg-accent text-[#283242] font-semibold shadow-[0_0_12px_rgba(21,112,182,0.25)]'
                       : 'bg-elevated text-text-secondary hover:bg-card-hover hover:text-text-primary border border-[var(--border-subtle)]'
                     }`}
                 >
@@ -318,7 +318,7 @@ export default function PipelineManagementDashboard() {
                   key={rep}
                   onClick={() => toggleRep(rep)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 cursor-pointer ${selectedReps.includes(rep)
-                      ? 'bg-accent text-canvas font-semibold shadow-[0_0_12px_rgba(34,211,238,0.25)]'
+                      ? 'bg-accent text-[#283242] font-semibold shadow-[0_0_12px_rgba(21,112,182,0.25)]'
                       : 'bg-elevated text-text-secondary hover:bg-card-hover hover:text-text-primary border border-[var(--border-subtle)]'
                     }`}
                 >
@@ -339,25 +339,25 @@ export default function PipelineManagementDashboard() {
         <KpiCard
           label="Close Rate"
           value={formatPct(aggregateKpis.avgCloseRate)}
-          color="#22d3ee"
+          color="#1570B6"
           subtext={`${aggregateKpis.totalWon} won / ${aggregateKpis.totalDeals} total deals`}
         />
         <KpiCard
           label="Avg Selling Price"
           value={formatCurrency(aggregateKpis.avgAsp)}
-          color="#10b981"
+          color="#3B7E6B"
           subtext={formatCurrency(aggregateKpis.totalWonAmount) + ' total won'}
         />
         <KpiCard
           label="Sales Cycle"
           value={formatDays(aggregateKpis.avgSalesCycle)}
-          color="#8b5cf6"
+          color="#A67FB9"
           subtext="Avg days create to close"
         />
         <KpiCard
           label="Pipeline Velocity"
           value={formatCurrency(aggregateKpis.avgVelocity)}
-          color="#0891b2"
+          color="#26A2DC"
           subtext="$/month throughput"
         />
       </div>
@@ -372,8 +372,8 @@ export default function PipelineManagementDashboard() {
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-                <XAxis type="number" tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
-                <YAxis dataKey="name" type="category" width={groupMode === 'by_rep' ? 80 : 100} tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
+                <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+                <YAxis dataKey="name" type="category" width={groupMode === 'by_rep' ? 80 : 100} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
                 <Tooltip
                   formatter={(value: number, name: string) => [
                     name === 'closeRate' ? `${value}%` : `$${value.toLocaleString()}`,
@@ -381,8 +381,8 @@ export default function PipelineManagementDashboard() {
                   ]}
                 />
                 <Legend formatter={(value) => value === 'closeRate' ? 'Close Rate (%)' : 'ASP ($)'} />
-                <Bar dataKey="closeRate" name="closeRate" fill="#22d3ee" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="asp" name="asp" fill="#10b981" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="closeRate" name="closeRate" fill="#1570B6" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="asp" name="asp" fill="#3B7E6B" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -395,8 +395,8 @@ export default function PipelineManagementDashboard() {
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-                <XAxis type="number" tick={{ fontFamily: 'var(--font-fira-code)', fill: '#94a3b8', fontSize: 11 }} />
-                <YAxis dataKey="name" type="category" width={groupMode === 'by_rep' ? 80 : 100} tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
+                <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+                <YAxis dataKey="name" type="category" width={groupMode === 'by_rep' ? 80 : 100} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
                 <Tooltip
                   formatter={(value: number, name: string) => [
                     name === 'salesCycle' ? `${value} days` : `$${value.toLocaleString()}`,
@@ -404,8 +404,8 @@ export default function PipelineManagementDashboard() {
                   ]}
                 />
                 <Legend formatter={(value) => value === 'salesCycle' ? 'Sales Cycle (days)' : 'Velocity ($/mo)'} />
-                <Bar dataKey="salesCycle" name="salesCycle" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="velocity" name="velocity" fill="#0891b2" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="salesCycle" name="salesCycle" fill="#A67FB9" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="velocity" name="velocity" fill="#26A2DC" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -457,10 +457,10 @@ export default function PipelineManagementDashboard() {
                     <td style={{ textAlign: 'right' }} className="font-mono tabular-nums">
                       {row.total_deals}
                     </td>
-                    <td style={{ textAlign: 'right' }} className="font-mono tabular-nums text-[#10b981]">
+                    <td style={{ textAlign: 'right' }} className="font-mono tabular-nums text-[#3B7E6B]">
                       {row.deals_won}
                     </td>
-                    <td style={{ textAlign: 'right' }} className="font-mono tabular-nums text-[#ef4444]">
+                    <td style={{ textAlign: 'right' }} className="font-mono tabular-nums text-[#F47C44]">
                       {row.deals_lost}
                     </td>
                     <td style={{ textAlign: 'right' }}>
