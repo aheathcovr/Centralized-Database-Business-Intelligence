@@ -472,3 +472,65 @@ export async function getRepPerformance(params?: {
     month_start: bqDateToString(row.month_start),
   })) as RepPerformanceRow[];
 }
+
+// ============================================================
+// Pipeline Generation — from revops_analytics.pipeline_generation_view
+// ============================================================
+export interface PipelineGenerationRow {
+  period_start: string;
+  period_label: string;
+  quarter_start: string;
+  quarter_label: string;
+  owner_id: string;
+  owner_full_name: string;
+  period_type: string;
+  deals_created: number;
+  pipeline_amount: number;
+  avg_deal_amount: number;
+  meetings_booked: number;
+  _loaded_at: string;
+}
+
+export async function getPipelineGeneration(params?: {
+  start_period?: string;
+  end_period?: string;
+  owner_id?: string;
+  period_type?: 'monthly' | 'quarterly';
+}): Promise<PipelineGenerationRow[]> {
+  const whereConditions: string[] = [];
+  const queryParams: Record<string, string> = {};
+
+  if (params?.start_period) {
+    whereConditions.push('period_start >= @start_period');
+    queryParams.start_period = params.start_period;
+  }
+  if (params?.end_period) {
+    whereConditions.push('period_start <= @end_period');
+    queryParams.end_period = params.end_period;
+  }
+  if (params?.owner_id) {
+    whereConditions.push('owner_id = @owner_id');
+    queryParams.owner_id = params.owner_id;
+  }
+  if (params?.period_type) {
+    whereConditions.push('period_type = @period_type');
+    queryParams.period_type = params.period_type;
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? 'WHERE ' + whereConditions.join(' AND ')
+    : '';
+
+  const query = `
+    SELECT *
+    FROM \`gen-lang-client-0844868008.revops_analytics.pipeline_generation_view\`
+    ${whereClause}
+    ORDER BY period_start ASC, pipeline_amount DESC
+  `;
+
+  const [rows] = await bigquery.query({ query, params: queryParams });
+  return rows.map((row: any) => ({
+    ...row,
+    period_start: bqDateToString(row.period_start),
+  })) as PipelineGenerationRow[];
+}

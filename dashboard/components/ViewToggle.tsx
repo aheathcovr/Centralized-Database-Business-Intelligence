@@ -9,7 +9,7 @@ interface ViewOption {
 }
 
 const viewOptions: ViewOption[] = [
-  { name: 'Corporation Penetration', href: '/pipeline-overview' },
+  { name: 'Pipeline Generation', href: '/pipeline-overview' },
   { name: 'In-Month Conversion', href: '/in-month-conversion' },
   { name: 'Support Metrics', href: '/support-metrics' },
 ];

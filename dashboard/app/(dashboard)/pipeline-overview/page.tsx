@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { signOut } from 'next-auth/react';
-import Dashboard from '@/components/Dashboard';
+import PipelineGenerationDashboard from '@/components/PipelineGenerationDashboard';
 
 export default function PipelineOverviewPage() {
-  return <Dashboard />;
+  return <PipelineGenerationDashboard />;
 }

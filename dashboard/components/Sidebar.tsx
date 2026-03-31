@@ -11,7 +11,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    name: 'Pipeline Overview',
+    name: 'Pipeline Generation',
     href: '/pipeline-overview',
     icon: (
       <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
