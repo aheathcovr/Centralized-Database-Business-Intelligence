@@ -15,9 +15,6 @@ const cspHeader = `
 `;
 
 const nextConfig = {
-  turbopack: {
-    root: '/Users/austinheath/.cline/worktrees/eec2e/Centralized Database Business Intelligence/dashboard',
-  },
   images: {
     remotePatterns: [
       {

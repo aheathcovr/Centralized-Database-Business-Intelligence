@@ -82,7 +82,7 @@ clickup_corporations AS (
     (
       SELECT JSON_EXTRACT(field, '$.value')
       FROM UNNEST(JSON_EXTRACT_ARRAY(t.custom_fields)) AS field
-      WHERE JSON_EXTRACT_SCALAR(field, '$.name') = 'Companies'
+      WHERE JSON_EXTRACT_SCALAR(field, '$.name') = '🏠 Companies'
       LIMIT 1
     ) AS companies_list_json,
 
@@ -231,11 +231,11 @@ walletshare_metrics AS (
     -- Product decomposition (among active Flow/View)
     SUM(CASE WHEN counts_toward_walletshare AND is_flow = 1 AND is_view = 0 THEN 1 ELSE 0 END) AS active_flow_only,
     SUM(CASE WHEN counts_toward_walletshare AND is_view = 1 AND is_flow = 0 THEN 1 ELSE 0 END) AS active_view_only,
-    SUM(CASE WHEN counts_toward_walletshare AND is_flow AND is_view THEN 1 ELSE 0 END) AS active_flow_and_view,
+    SUM(CASE WHEN counts_toward_walletshare AND is_flow = 1 AND is_view = 1 THEN 1 ELSE 0 END) AS active_flow_and_view,
     -- Active Sync (separate from Flow/View walletshare)
-    SUM(CASE WHEN fac_task_status IN ('active', 'onboarding', 'implementation') AND is_sync THEN 1 ELSE 0 END) AS active_sync,
+    SUM(CASE WHEN fac_task_status IN ('active', 'onboarding', 'implementation') AND is_sync = 1 THEN 1 ELSE 0 END) AS active_sync,
     -- Opportunity: Win-back (churned + offboarding)
-    SUM(CASE WHEN fac_task_status IN ('active', 'onboarding', 'implementation') AND is_sync THEN 0
+    SUM(CASE WHEN fac_task_status IN ('active', 'onboarding', 'implementation') AND is_sync = 1 THEN 0
       WHEN fac_task_status LIKE 'churned%' OR fac_task_status = 'offboarding' THEN 1 ELSE 0 END) AS win_back_facilities,
     -- Opportunity: No-start
     SUM(CASE WHEN fac_task_status = 'no-start' THEN 1 ELSE 0 END) AS no_start_facilities,
@@ -288,7 +288,7 @@ corporation_names AS (
 
 parsed_corporations AS (
   SELECT
-    cc.* EXCEPT(custom_fields, services_json, org_code_json, companies_list_json,
+    cc.* EXCEPT(custom_fields, org_code_json, companies_list_json,
                 billing_stop_date_str, go_live_date_str, onboarding_start_date_str,
                 task_created_date, task_updated_date),
 
@@ -379,7 +379,7 @@ final_output AS (
   SELECT
     -- Corporation identifiers
     cp.clickup_task_id,
-    cn.corporation_name,
+    COALESCE(cn.corporation_name, cp.corporation_name) AS corporation_name,
 
     -- Corporation-level status and product
     cp.task_status_label,
