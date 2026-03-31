@@ -4,35 +4,36 @@
 # Remote: origin -> https://github.com/aheathcovr/Centralized-Database-Business-Intelligence.git
 
 ## Project Overview
-# This repository contains BigQuery SQL view definitions and supporting documentation
-# for the Covr centralized data warehouse. There is no application code — all logic
-# lives in BigQuery views and Looker Studio dashboards.
+# This repository contains BigQuery SQL view definitions, a Next.js dashboard,
+# and supporting documentation for the Covr centralized data warehouse.
 #
-# Source systems: HubSpot (Fivetran/Airbyte), Intercom, ClickUp, SSO, DataHouse
+# Source systems: HubSpot (Airbyte), Intercom (Airbyte), ClickUp (Airbyte), SSO, DataHouse
 # Target: Google BigQuery project gen-lang-client-0844868008
 # Dataset: revops_analytics
 #
 # Deployment: Run SQL scripts directly in BigQuery Console or via `bq` CLI.
+# Dashboard: Next.js app in dashboard/, deployed to Vercel.
 
 ## Repository Structure
 .
 ├── bigquery/
 │   ├── corp_penetration_view.sql
 │   ├── in_month_conversion.sql
-│   ├── revops_in_month_conversion.sql
+│   ├── rep_performance_view.sql
 │   ├── intercom_weekly_support_metrics.sql
 │   └── (future views follow same pattern)
-├── QUICKSTART.md
-├── NEXT_STEPS.md
-├── TIMELINE_FEATURE.md
-├── ENVIRONMENT-SETUP.md
-├── GITLAB-SETUP.md
-├── PROJECT-STATUS.md
-└── (other planning and config docs)
+├── dashboard/
+│   ├── app/             # Next.js App Router pages and API routes
+│   ├── components/      # React components
+│   ├── lib/             # BigQuery client, auth, utilities
+│   └── package.json
+├── QUICKSTART.md        # Setup, OAuth, and troubleshooting
+├── TIMELINE_FEATURE.md  # Timeline selector implementation docs
+└── .clinerules          # This file
 
 ## File Conventions
 - SQL files: snake_case with descriptive names (e.g., in_month_conversion.sql)
-- Planning docs: UPPER_SNAKE_CASE.md (e.g., QUICKSTART.md, NEXT_STEPS.md)
+- Planning docs: UPPER_SNAKE_CASE.md (e.g., QUICKSTART.md)
 - Configuration: lowercase with dashes (e.g., .gitlab-ci.yml)
 - All SQL files go in bigquery/ directory
 - All planning docs go in root
@@ -108,5 +109,5 @@ COALESCE(property_hs_arr, property_amount, 0) AS current_arr
 ## Current View Inventory
 1. corp_penetration_view — Corporation/facility penetration analytics
 2. in_month_conversion — In-month deal conversion (Airbyte source, per-deal detail)
-3. revops_in_month_conversion — In-month deal conversion (Fivetran source, aggregated)
-4. intercom_weekly_support_metrics — Weekly support volume by admin
+3. rep_performance_view — Rep performance by month (deals won, lost, entered)
+4. intercom_weekly_support_metrics — Weekly support volume and CSAT

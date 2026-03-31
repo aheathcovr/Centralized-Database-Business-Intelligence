@@ -10,6 +10,9 @@ out/
 .env.local
 .env.production
 
+# TypeScript build cache
+*.tsbuildinfo
+
 # Misc
 .DS_Store
 *.log
