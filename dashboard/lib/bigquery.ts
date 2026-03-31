@@ -586,4 +586,189 @@ export async function getPipelineMetrics(params?: {
 
   const [rows] = await bigquery.query({ query, params: queryParams });
   return rows as PipelineMetricsRow[];
+
+// ============================================================
+// Customer Success — CSAT & NPS by period, domain, onboarding
+// ============================================================
+
+export interface CsPeriodRow {
+  period_start: string;
+  period_type: string;
+  period_label: string;
+  csat_positive: number;
+  csat_negative: number;
+  csat_total: number;
+  csat_score_pct: number | null;
+}
+
+export interface NpsPeriodRow {
+  period_start: string;
+  period_type: string;
+  period_label: string;
+  total_responses: number;
+  promoters: number;
+  passives: number;
+  detractors: number;
+  nps_score: number | null;
+}
+
+export interface CsDomainRow {
+  domain: string;
+  total_ratings: number;
+  csat_positive: number;
+  csat_negative: number;
+  csat_score_pct: number | null;
+}
+
+export async function getCsatPeriodic(): Promise<CsPeriodRow[]> {
+  const query = `
+    SELECT *
+    FROM \`gen-lang-client-0844868008.revops_analytics.csat_monthly_quarterly\`
+    ORDER BY period_type, period_start DESC
+  `;
+
+  const [rows] = await bigquery.query({ query });
+  return rows.map((row: any) => ({
+    ...row,
+    period_start: bqDateToString(row.period_start),
+  })) as CsPeriodRow[];
+}
+
+export async function getNpsPeriodic(): Promise<NpsPeriodRow[]> {
+  const query = `
+    SELECT *
+    FROM \`gen-lang-client-0844868008.revops_analytics.nps_monthly_quarterly\`
+    ORDER BY period_type, period_start DESC
+  `;
+
+  try {
+    const [rows] = await bigquery.query({ query });
+    return rows.map((row: any) => ({
+      ...row,
+      period_start: bqDateToString(row.period_start),
+    })) as NpsPeriodRow[];
+  } catch {
+    return [];
+  }
+}
+
+export async function getCsatByDomain(): Promise<CsDomainRow[]> {
+  const query = `
+    SELECT *
+    FROM \`gen-lang-client-0844868008.revops_analytics.csat_by_domain\`
+    ORDER BY total_ratings DESC
+    LIMIT 50
+  `;
+
+  const [rows] = await bigquery.query({ query });
+  return rows as CsDomainRow[];
+}
+
+export interface OnboardingCorporation {
+  corporation_name: string;
+  task_status_label: string;
+  total_facilities: number;
+  facilities_in_dh: number;
+  go_live_date: string | null;
+  onboarding_start_date: string | null;
+  hubspot_url: string | null;
+  product_mix: string;
+}
+
+export async function getOnboardingCorporations(): Promise<OnboardingCorporation[]> {
+  const query = `
+    SELECT
+      corporation_name,
+      task_status_label,
+      total_facilities,
+      facilities_in_dh,
+      go_live_date,
+      onboarding_start_date,
+      hubspot_url,
+      product_mix
+    FROM \`gen-lang-client-0844868008.revops_analytics.corp_penetration_view\`
+    WHERE task_status_label IN ('Implementation', 'Stalled')
+      AND (go_live_date IS NULL OR go_live_date > CURRENT_TIMESTAMP())
+    ORDER BY
+      CASE task_status_label
+        WHEN 'Implementation' THEN 0
+        WHEN 'Stalled' THEN 1
+        ELSE 2
+      END,
+      corporation_name
+  `;
+
+  const [rows] = await bigquery.query({ query });
+  return rows.map((row: any) => ({
+    ...row,
+    go_live_date: row.go_live_date ? bqDateToString(row.go_live_date) : null,
+    onboarding_start_date: row.onboarding_start_date ? bqDateToString(row.onboarding_start_date) : null,
+  })) as OnboardingCorporation[];
+}
+
+export async function getOnboardingFacilities(): Promise<OnboardingCorporation[]> {
+  const query = `
+    SELECT
+      corporation_name,
+      task_status_label,
+      total_facilities,
+      facilities_in_dh,
+      go_live_date,
+      onboarding_start_date,
+      hubspot_url,
+      product_mix
+    FROM \`gen-lang-client-0844868008.revops_analytics.corp_penetration_view\`
+    WHERE task_status_label = 'Active'
+      AND go_live_date IS NOT NULL
+      AND go_live_date > CURRENT_TIMESTAMP()
+    ORDER BY go_live_date ASC, corporation_name
+  `;
+
+  const [rows] = await bigquery.query({ query });
+  return rows.map((row: any) => ({
+    ...row,
+    go_live_date: row.go_live_date ? bqDateToString(row.go_live_date) : null,
+    onboarding_start_date: row.onboarding_start_date ? bqDateToString(row.onboarding_start_date) : null,
+  })) as OnboardingCorporation[];
+}
+
+export interface CustomerSuccessSummary {
+  totalCsatResponses: number;
+  avgCsatScore: number | null;
+  totalNpsResponses: number;
+  avgNpsScore: number | null;
+  inImplementation: number;
+  inOnboarding: number;
+  stalledCount: number;
+  activeCount: number;
+}
+
+export async function getCustomerSuccessSummary(): Promise<CustomerSuccessSummary> {
+  const query = `
+    SELECT
+      COUNT(*) as total_corps,
+      COUNTIF(task_status_label = 'Active') as active_count,
+      COUNTIF(task_status_label = 'Implementation') as implementation_count,
+      COUNTIF(task_status_label = 'Stalled') as stalled_count,
+      COUNTIF(
+        task_status_label = 'Active'
+        AND go_live_date IS NOT NULL
+        AND go_live_date > CURRENT_TIMESTAMP()
+      ) as onboarding_count
+    FROM \`gen-lang-client-0844868008.revops_analytics.corp_penetration_view\`
+  `;
+
+  const [rows] = await bigquery.query({ query });
+  const r = rows[0] || {};
+
+  return {
+    totalCsatResponses: 0,
+    avgCsatScore: null,
+    totalNpsResponses: 0,
+    avgNpsScore: null,
+    inImplementation: Number(r.implementation_count) || 0,
+    inOnboarding: Number(r.onboarding_count) || 0,
+    stalledCount: Number(r.stalled_count) || 0,
+    activeCount: Number(r.active_count) || 0,
+  };
 }
