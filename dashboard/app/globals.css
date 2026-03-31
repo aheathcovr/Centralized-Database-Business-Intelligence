@@ -191,119 +191,32 @@ body > * {
     border-left-color: rgba(255, 255, 255, 0.15);
   }
 
-  .section-title {
-    font-family: var(--font-primary-serif);
-    letter-spacing: -0.02em;
-    color: var(--color-navy-primary);
+
+  .view-toggle {
+    @apply flex items-center gap-1;
+    font-family: var(--font-primary-sans);
+  }
+
+  .view-toggle-item {
+    @apply px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200;
+    white-space: nowrap;
+  }
+
+  .view-toggle-item-active {
+    background: var(--accent);
+    color: #FFFFFF;
+    box-shadow: 0 1px 3px rgba(21, 112, 182, 0.3);
+  }
+
+  .view-toggle-item-inactive {
+    color: var(--text-secondary);
+  }
+
+  .view-toggle-item-inactive:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
   }
 }
 
 .dashboard-table {
-  width: 100%;
-  font-family: var(--font-primary-sans);
-}
-
-.dashboard-table thead {
-  background: var(--bg-surface);
-}
-
-.dashboard-table th {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-subtle);
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.15s ease;
-  font-family: var(--font-primary-sans);
-}
-
-.dashboard-table th:hover {
-  color: var(--text-primary);
-}
-
-.dashboard-table td {
-  padding: 0.875rem 1rem;
-  font-size: 0.8125rem;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-subtle);
-  transition: background 0.15s ease;
-  font-family: var(--font-primary-sans);
-}
-
-.dashboard-table tbody tr:hover td {
-  background: rgba(21, 112, 182, 0.03);
-}
-
-.badge {
-  @apply inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full;
-  font-family: var(--font-primary-sans);
-}
-
-.badge-active {
-  background: rgba(59, 126, 107, 0.12);
-  color: var(--color-green-primary);
-  border: 1px solid rgba(59, 126, 107, 0.25);
-}
-
-.badge-churned {
-  background: rgba(244, 124, 68, 0.12);
-  color: var(--color-orange-primary);
-  border: 1px solid rgba(244, 124, 68, 0.25);
-}
-
-.badge-implementation {
-  background: rgba(21, 112, 182, 0.12);
-  color: var(--color-blue-primary);
-  border: 1px solid rgba(21, 112, 182, 0.25);
-}
-
-.badge-stalled {
-  background: rgba(166, 127, 185, 0.12);
-  color: var(--color-purple-primary);
-  border: 1px solid rgba(166, 127, 185, 0.25);
-}
-
-.badge-offboarding {
-  background: rgba(105, 111, 123, 0.12);
-  color: var(--color-navy-mid);
-  border: 1px solid rgba(105, 111, 123, 0.25);
-}
-
-.spinner {
-  @apply animate-spin rounded-full h-12 w-12;
-  border: 2px solid var(--border-default);
-  border-top-color: var(--accent);
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(40, 50, 66, 0.15);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(40, 50, 66, 0.3);
-}
-
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 16px var(--accent-glow), 0 1px 3px rgba(40,50,66,0.06); }
-  50% { box-shadow: 0 0 24px var(--accent-glow-strong), 0 4px 12px rgba(40,50,66,0.08); }
-}
-
-.card-glow-animated {
-  @apply card-glow;
-  animation: glow-pulse 3s ease-in-out infinite;
-}
+  width: 100
