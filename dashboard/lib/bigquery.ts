@@ -4,6 +4,15 @@ const bigquery = new BigQuery({
   projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || 'gen-lang-client-0844868008',
 });
 
+
+// BigQuery returns DATE fields as BigQueryDate objects with {value: "YYYY-MM-DD"} structure.
+// This helper extracts the ISO date string for JSON serialization.
+function bqDateToString(val: unknown): string {
+  if (val && typeof val === "object" && "value" in val) {
+    return (val as { value: string }).value;
+  }
+  return String(val);
+}
 export interface CorporationData {
   clickup_task_id: string;
   corporation_name: string;
@@ -330,7 +339,10 @@ export async function getSupportMetrics(params?: {
   `;
 
   const [rows] = await bigquery.query({ query, params: queryParams });
-  return rows as SupportMetrics[];
+  return rows.map((row: any) => ({
+    ...row,
+    week_start: bqDateToString(row.week_start),
+  })) as SupportMetrics[];
 }
 
 // In-Month Conversion data from revops_analytics.in_month_conversion view
@@ -397,7 +409,10 @@ export async function getInMonthConversion(params?: {
   `;
 
   const [rows] = await bigquery.query({ query, params: queryParams });
-  return rows as InMonthConversionRow[];
+  return rows.map((row: any) => ({
+    ...row,
+    month_start: bqDateToString(row.month_start),
+  })) as InMonthConversionRow[];
 }
 
 // ============================================================
@@ -452,5 +467,8 @@ export async function getRepPerformance(params?: {
   `;
 
   const [rows] = await bigquery.query({ query, params: queryParams });
-  return rows as RepPerformanceRow[];
+  return rows.map((row: any) => ({
+    ...row,
+    month_start: bqDateToString(row.month_start),
+  })) as RepPerformanceRow[];
 }
