@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { useQuery } from '@/lib/hooks';
+import { sortData } from '@/lib/utils';
 import {
   BarChart,
   Bar,
@@ -49,43 +51,34 @@ const STATUS_COLORS: Record<string, string> = {
   Offboarding: '#64748b',
 };
 
+type TaskStatusFilter = 'all' | 'Active' | 'Churned' | 'Implementation' | 'Stalled' | 'Offboarding';
+type ProductFilter = 'all' | 'Flow' | 'View' | 'Sync';
+type SortableCorporationColumn = 'corporation_name' | 'task_status_label' | 'product_mix' | 'total_facilities' | 'facilities_in_dh' | 'penetration_rate';
+
 export default function Dashboard() {
-  const [corporations, setCorporations] = useState<Corporation[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedTaskStatus, setSelectedTaskStatus] = useState<string>('all');
-  const [selectedProduct, setSelectedProduct] = useState<string>('all');
+  const [selectedTaskStatus, setSelectedTaskStatus] = useState<TaskStatusFilter>('all');
+  const [selectedProduct, setSelectedProduct] = useState<ProductFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
   const [salesRepFilter, setSalesRepFilter] = useState<SalesRepFilterValue>({ reps: [], groups: [] });
-  const [sortColumn, setSortColumn] = useState<
-    'corporation_name' | 'task_status_label' | 'product_mix' | 'total_facilities' | 'facilities_in_dh' | 'penetration_rate'
-  >('penetration_rate');
+  const [sortColumn, setSortColumn] = useState<SortableCorporationColumn>('penetration_rate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [timeline, setTimeline] = useState<TimelinePeriod>('all');
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
+  const { data, loading, error, refetch: fetchData } = useQuery<{ corporations: Corporation[]; stats: Stats }>(
+    'corporations',
+    async () => {
       const response = await fetch('/api/corporations');
       if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
       }
-      const data = await response.json();
-      setCorporations(data.corporations);
-      setStats(data.stats);
-    } catch (err) {
-      console.error('Failed to fetch data:', err);
-      setError('Failed to load dashboard data. Please refresh the page.');
-    } finally {
-      setLoading(false);
+      return response.json();
     }
-  };
+  );
+
+  const corporations = data?.corporations || [];
+  const stats = data?.stats || null;
 
   const handleTimelineChange = (period: TimelinePeriod) => {
     setIsTransitioning(true);
@@ -93,7 +86,7 @@ export default function Dashboard() {
     setTimeout(() => setIsTransitioning(false), 300);
   };
 
-  const handleSort = (col: typeof sortColumn) => {
+  const handleSort = (col: SortableCorporationColumn) => {
     if (sortColumn === col) {
       setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -114,7 +107,7 @@ export default function Dashboard() {
   }, [timelineFilteredCorporations, stats]);
 
   // Apply UI filters (status, product, search) on top of timeline filter
-  const filteredCorporations = timelineFilteredCorporations.filter((corp: Corporation) => {
+  const filteredCorporations = useMemo(() => timelineFilteredCorporations.filter((corp: Corporation) => {
     const matchesTaskStatus =
       selectedTaskStatus === 'all' || corp.task_status_label === selectedTaskStatus;
     const matchesProduct =
@@ -123,25 +116,64 @@ export default function Dashboard() {
       searchQuery === '' ||
       corp.corporation_name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTaskStatus && matchesProduct && matchesSearch;
-  });
+  }), [timelineFilteredCorporations, selectedTaskStatus, selectedProduct, searchQuery]);
 
-  const productMixData = [
-    { name: 'Flow', value: timelineFilteredStats?.flow_customers || 0 },
-    { name: 'View', value: timelineFilteredStats?.view_customers || 0 },
-    { name: 'Sync', value: timelineFilteredStats?.sync_customers || 0 },
-  ].filter((item) => item.value > 0);
+  // Derived metrics from timeline filtered stats
+  const { productMixData, taskStatusData, facilitiesByStatusData, weightedPenetration } = useMemo(() => {
+    if (!timelineFilteredStats) {
+      return { productMixData: [], taskStatusData: [], facilitiesByStatusData: [], weightedPenetration: 0 };
+    }
+    
+    return {
+      productMixData: [
+        { name: 'Flow', value: timelineFilteredStats.flow_customers || 0 },
+        { name: 'View', value: timelineFilteredStats.view_customers || 0 },
+        { name: 'Sync', value: timelineFilteredStats.sync_customers || 0 },
+      ].filter((item) => item.value > 0),
+      
+      taskStatusData: [
+        { name: 'Active', count: timelineFilteredStats.active_status_count || 0 },
+        { name: 'Churned', count: timelineFilteredStats.churned_status_count || 0 },
+        { name: 'Implementation', count: timelineFilteredStats.implementation_status_count || 0 },
+        { name: 'Stalled', count: timelineFilteredStats.stalled_status_count || 0 },
+        { name: 'Offboarding', count: timelineFilteredStats.offboarding_status_count || 0 },
+      ].filter((item) => item.count > 0),
+      
+      facilitiesByStatusData: [
+        {
+          status: 'Active',
+          matched: timelineFilteredStats.active_facilities_in_dh || 0,
+          unmatched: (timelineFilteredStats.active_facilities || 0) - (timelineFilteredStats.active_facilities_in_dh || 0),
+        },
+        {
+          status: 'Implementation',
+          matched: timelineFilteredStats.implementation_facilities_in_dh || 0,
+          unmatched: (timelineFilteredStats.implementation_facilities || 0) - (timelineFilteredStats.implementation_facilities_in_dh || 0),
+        },
+        {
+          status: 'Stalled',
+          matched: timelineFilteredStats.stalled_facilities_in_dh || 0,
+          unmatched: (timelineFilteredStats.stalled_facilities || 0) - (timelineFilteredStats.stalled_facilities_in_dh || 0),
+        },
+        {
+          status: 'Offboarding',
+          matched: timelineFilteredStats.offboarding_facilities_in_dh || 0,
+          unmatched: (timelineFilteredStats.offboarding_facilities || 0) - (timelineFilteredStats.offboarding_facilities_in_dh || 0),
+        },
+        {
+          status: 'Churned',
+          matched: timelineFilteredStats.churned_facilities_in_dh || 0,
+          unmatched: (timelineFilteredStats.churned_facilities || 0) - (timelineFilteredStats.churned_facilities_in_dh || 0),
+        },
+      ].filter((d) => d.matched + d.unmatched > 0),
+      
+      weightedPenetration: timelineFilteredStats.total_facilities > 0
+        ? Math.round((timelineFilteredStats.total_facilities_in_dh / timelineFilteredStats.total_facilities) * 100)
+        : 0
+    };
+  }, [timelineFilteredStats]);
 
-  // Customer Status Data (from ClickUp task status)
-  const taskStatusData = [
-    { name: 'Active', count: timelineFilteredStats?.active_status_count || 0 },
-    { name: 'Churned', count: timelineFilteredStats?.churned_status_count || 0 },
-    { name: 'Implementation', count: timelineFilteredStats?.implementation_status_count || 0 },
-    { name: 'Stalled', count: timelineFilteredStats?.stalled_status_count || 0 },
-    { name: 'Offboarding', count: timelineFilteredStats?.offboarding_status_count || 0 },
-  ].filter((item) => item.count > 0);
-
-  // GTM priority: lowest-penetration active + implementation accounts (uses timeline-filtered corps)
-  const penetrationData = timelineFilteredCorporations
+  const penetrationData = useMemo(() => timelineFilteredCorporations
     .filter((c: Corporation) => c.task_status_label === 'Active' || c.task_status_label === 'Implementation')
     .sort((a: Corporation, b: Corporation) => (a.penetration_rate || 0) - (b.penetration_rate || 0))
     .slice(0, 10)
@@ -151,105 +183,108 @@ export default function Dashboard() {
         : corp.corporation_name,
       penetration: Math.round((corp.penetration_rate || 0) * 100),
       facilities: corp.total_facilities,
-    }));
+    })), [timelineFilteredCorporations]);
 
-  const facilitiesByStatusData = [
-    {
-      status: 'Active',
-      matched: timelineFilteredStats?.active_facilities_in_dh || 0,
-      unmatched: (timelineFilteredStats?.active_facilities || 0) - (timelineFilteredStats?.active_facilities_in_dh || 0),
-    },
-    {
-      status: 'Implementation',
-      matched: timelineFilteredStats?.implementation_facilities_in_dh || 0,
-      unmatched: (timelineFilteredStats?.implementation_facilities || 0) - (timelineFilteredStats?.implementation_facilities_in_dh || 0),
-    },
-    {
-      status: 'Stalled',
-      matched: timelineFilteredStats?.stalled_facilities_in_dh || 0,
-      unmatched: (timelineFilteredStats?.stalled_facilities || 0) - (timelineFilteredStats?.stalled_facilities_in_dh || 0),
-    },
-    {
-      status: 'Offboarding',
-      matched: timelineFilteredStats?.offboarding_facilities_in_dh || 0,
-      unmatched: (timelineFilteredStats?.offboarding_facilities || 0) - (timelineFilteredStats?.offboarding_facilities_in_dh || 0),
-    },
-    {
-      status: 'Churned',
-      matched: timelineFilteredStats?.churned_facilities_in_dh || 0,
-      unmatched: (timelineFilteredStats?.churned_facilities || 0) - (timelineFilteredStats?.churned_facilities_in_dh || 0),
-    },
-  ].filter((d: { status: string; matched: number; unmatched: number }) => d.matched + d.unmatched > 0);
+  const { tierBelow50, tierMid, tierAbove80, facilitiesBelow50, facilitiesMid, facilitiesAbove80, expansionOpportunity, productDepthData } = useMemo(() => {
+    const tBelow50: Corporation[] = [];
+    const tMid: Corporation[] = [];
+    const tAbove80: Corporation[] = [];
+    
+    let fBelow50 = 0;
+    let fMid = 0;
+    let fAbove80 = 0;
+    let expansionOpp = 0;
 
-  const weightedPenetration =
-    timelineFilteredStats && timelineFilteredStats.total_facilities > 0
-      ? Math.round((timelineFilteredStats.total_facilities_in_dh / timelineFilteredStats.total_facilities) * 100)
-      : 0;
+    const depthStats = {
+      1: { sum: 0, count: 0 },
+      2: { sum: 0, count: 0 },
+      3: { sum: 0, count: 0 },
+    };
 
-  // GTM tier metrics — scoped to Active accounts only, affected by timeline filter
-  const activeCorps = timelineFilteredCorporations.filter((c: Corporation) => c.task_status_label === 'Active');
-  const tierBelow50 = activeCorps.filter((c: Corporation) => (c.penetration_rate || 0) < 0.5);
-  const tierMid = activeCorps.filter((c: Corporation) => (c.penetration_rate || 0) >= 0.5 && (c.penetration_rate || 0) < 0.8);
-  const tierAbove80 = activeCorps.filter((c: Corporation) => (c.penetration_rate || 0) >= 0.8);
-  const facilitiesBelow50 = tierBelow50.reduce((s: number, c: Corporation) => s + (c.total_facilities || 0), 0);
-  const facilitiesMid = tierMid.reduce((s: number, c: Corporation) => s + (c.total_facilities || 0), 0);
-  const facilitiesAbove80 = tierAbove80.reduce((s: number, c: Corporation) => s + (c.total_facilities || 0), 0);
-  const expansionOpportunity = activeCorps.reduce((sum: number, corp: Corporation) => {
-    const target = Math.floor((corp.total_facilities || 0) * 0.8);
-    return sum + Math.max(0, target - (corp.facilities_in_dh || 0));
-  }, 0);
+    // js-combine-iterations: Single pass for all tier filtering, summation, and product depth stats
+    for (const c of timelineFilteredCorporations) {
+      if (c.task_status_label !== 'Active') continue;
+      
+      const pr = c.penetration_rate || 0;
+      const facilities = c.total_facilities || 0;
+      
+      if (pr < 0.5) {
+        tBelow50.push(c);
+        fBelow50 += facilities;
+      } else if (pr < 0.8) {
+        tMid.push(c);
+        fMid += facilities;
+      } else {
+        tAbove80.push(c);
+        fAbove80 += facilities;
+      }
+      
+      expansionOpp += Math.max(0, Math.floor(facilities * 0.8) - (c.facilities_in_dh || 0));
 
-  // Product depth vs. penetration — does more products → higher wallet share?
-  const productDepthData = [1, 2, 3]
-    .map((count) => {
-      const corps = activeCorps.filter((c: Corporation) => {
-        const n =
-          (c.product_mix.includes('Flow') ? 1 : 0) +
-          (c.product_mix.includes('View') ? 1 : 0) +
-          (c.product_mix.includes('Sync') ? 1 : 0);
-        return n === count;
-      });
-      const avg =
-        corps.length > 0
-          ? corps.reduce((s: number, c: Corporation) => s + (c.penetration_rate || 0), 0) / corps.length
-          : 0;
+      const productCount = (c.product_mix.includes('Flow') ? 1 : 0) + 
+                           (c.product_mix.includes('View') ? 1 : 0) + 
+                           (c.product_mix.includes('Sync') ? 1 : 0);
+                           
+      if (productCount === 1 || productCount === 2 || productCount === 3) {
+        depthStats[productCount as 1|2|3].sum += pr;
+        depthStats[productCount as 1|2|3].count += 1;
+      }
+    }
+
+    const pDepthData = ([1, 2, 3] as const).map((count) => {
+      const stats = depthStats[count];
+      const avg = stats.count > 0 ? stats.sum / stats.count : 0;
       return {
         products: count === 1 ? '1 Product' : count === 2 ? '2 Products' : '3 Products',
         penetration: Math.round(avg * 100),
-        count: corps.length,
+        count: stats.count,
       };
-    })
-    .filter((d) => d.count > 0);
+    }).filter((d) => d.count > 0);
 
-  const scatterData = filteredCorporations.map((corp: Corporation) => ({
-    name: corp.corporation_name,
-    won: corp.facilities_in_dh || 0,
-    remaining: Math.max(0, (corp.total_facilities || 0) - (corp.facilities_in_dh || 0)),
-    total: corp.total_facilities || 0,
-    status: corp.task_status_label,
-  }));
+    return {
+      tierBelow50: tBelow50,
+      tierMid: tMid,
+      tierAbove80: tAbove80,
+      facilitiesBelow50: fBelow50,
+      facilitiesMid: fMid,
+      facilitiesAbove80: fAbove80,
+      expansionOpportunity: expansionOpp,
+      productDepthData: pDepthData
+    };
+  }, [timelineFilteredCorporations]);
 
-  const wonMedian = (() => {
-    const vals = scatterData.map((d: { won: number }) => d.won).sort((a: number, b: number) => a - b);
-    return vals[Math.floor(vals.length / 2)] ?? 0;
-  })();
+  const { scatterData, wonMedian, remainingMedian } = useMemo(() => {
+    // js-combine-iterations: One pass to map data and pull values, then sort locally
+    const wonVals: number[] = [];
+    const remVals: number[] = [];
+    const sData = filteredCorporations.map((corp: Corporation) => {
+      const won = corp.facilities_in_dh || 0;
+      const remaining = Math.max(0, (corp.total_facilities || 0) - won);
+      wonVals.push(won);
+      remVals.push(remaining);
+      return {
+        name: corp.corporation_name,
+        won,
+        remaining,
+        total: corp.total_facilities || 0,
+        status: corp.task_status_label,
+      };
+    });
+    
+    wonVals.sort((a, b) => a - b);
+    remVals.sort((a, b) => a - b);
+    
+    const wMedian = wonVals[Math.floor(wonVals.length / 2)] ?? 0;
+    const rMedian = remVals[Math.floor(remVals.length / 2)] ?? 0;
+    
+    return { scatterData: sData, wonMedian: wMedian, remainingMedian: rMedian };
+  }, [filteredCorporations]);
 
-  const remainingMedian = (() => {
-    const vals = scatterData.map((d: { remaining: number }) => d.remaining).sort((a: number, b: number) => a - b);
-    return vals[Math.floor(vals.length / 2)] ?? 0;
-  })();
+  const sortedCorporations = useMemo(() => {
+    return sortData(filteredCorporations, sortColumn, sortDirection);
+  }, [filteredCorporations, sortColumn, sortDirection]);
 
-  const sortedCorporations = [...filteredCorporations].sort((a, b) => {
-    const aVal = a[sortColumn];
-    const bVal = b[sortColumn];
-    const dir = sortDirection === 'asc' ? 1 : -1;
-    if (aVal == null) return 1;
-    if (bVal == null) return -1;
-    if (typeof aVal === 'number' && typeof bVal === 'number') return (aVal - bVal) * dir;
-    return String(aVal).localeCompare(String(bVal)) * dir;
-  });
-
-  const sortIcon = (col: typeof sortColumn) =>
+  const sortIcon = (col: SortableCorporationColumn) =>
     sortColumn === col ? (sortDirection === 'asc' ? ' ↑' : ' ↓') : ' ↕';
 
   const dataFreshness = timelineFilteredStats?.data_loaded_at
@@ -267,7 +302,7 @@ export default function Dashboard() {
 
   const timelineLabel = getTimelineLabel(timeline);
 
-  if (loading) {
+  if (loading && corporations.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="spinner"></div>
@@ -282,9 +317,9 @@ export default function Dashboard() {
           <svg className="w-8 h-8 text-red-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
-          <p className="text-red-600 font-medium mb-3">{error}</p>
-          <button onClick={fetchData} className="btn-primary text-sm">
-            Retry
+          <p className="text-red-600 font-medium mb-3">{error instanceof Error ? error.message : String(error)}</p>
+          <button onClick={fetchData} className="btn-primary text-sm" disabled={loading}>
+            {loading ? 'Retrying...' : 'Retry'}
           </button>
         </div>
       </div>
@@ -306,75 +341,75 @@ export default function Dashboard() {
 
       <div className="max-w-7xl mx-auto">
         {/* Summary Cards */}
-        {timelineFilteredStats && (
+        {timelineFilteredStats ? (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
             <div className="card-glow">
               <p className="text-[11px] uppercase tracking-widest mb-2">Total Corporations</p>
-              <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">
+              <p className="text-3xl font-bold text-text-primary font-mono tabular-nums">
                 {timelineFilteredStats.total_corporations}
               </p>
             </div>
             <div className="card-glow" style={{ borderTopColor: "#10b981" }}>
               <p className="text-[11px] uppercase tracking-widest mb-2">Active</p>
-              <p className="text-3xl font-bold text-green-600 font-mono tabular-nums">
+              <p className="text-3xl font-bold text-[#10b981] font-mono tabular-nums">
                 {timelineFilteredStats.active_status_count}
               </p>
             </div>
             <div className="card-glow">
               <p className="text-[11px] uppercase tracking-widest mb-2">Weighted Penetration</p>
-              <p className="text-3xl font-bold text-covr-blue font-mono tabular-nums">
+              <p className="text-3xl font-bold text-accent font-mono tabular-nums">
                 {weightedPenetration}%
               </p>
               <p className="text-[11px] mt-1.5">by facility count</p>
             </div>
             <div className="card">
               <p className="text-[11px] uppercase tracking-widest mb-2">Total Facilities</p>
-              <p className="text-3xl font-bold text-gray-900 font-mono tabular-nums">
+              <p className="text-3xl font-bold text-text-primary font-mono tabular-nums">
                 {timelineFilteredStats.total_facilities?.toLocaleString() || 0}
               </p>
             </div>
             <div className="card-glow" style={{ borderTopColor: "#0891b2" }}>
               <p className="text-[11px] uppercase tracking-widest mb-2">Definitive Healthcare</p>
-              <p className="text-3xl font-bold text-teal-600 font-mono tabular-nums">
+              <p className="text-3xl font-bold text-[#0891b2] font-mono tabular-nums">
                 {timelineFilteredStats.total_facilities_in_dh?.toLocaleString() || 0}
               </p>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* GTM Penetration Tiers — Active accounts only */}
-        {timelineFilteredCorporations.length > 0 && (
+        {timelineFilteredCorporations.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="card p-5" style={{ borderTop: "2px solid #ef4444" }}>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Below 50% — Active</p>
-              <p className="text-2xl font-bold text-red-600 font-mono tabular-nums">
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1">Below 50% — Active</p>
+              <p className="text-2xl font-bold text-[#ef4444] font-mono tabular-nums">
                 {tierBelow50.length}<span className="text-sm font-normal ml-1">corps</span>
               </p>
               <p className="text-xs mt-1">{facilitiesBelow50.toLocaleString()} facilities</p>
             </div>
             <div className="card p-5" style={{ borderTop: "2px solid #f59e0b" }}>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">50–79% — Active</p>
-              <p className="text-2xl font-bold text-amber-600 font-mono tabular-nums">
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1">50–79% — Active</p>
+              <p className="text-2xl font-bold text-[#f59e0b] font-mono tabular-nums">
                 {tierMid.length}<span className="text-sm font-normal ml-1">corps</span>
               </p>
               <p className="text-xs mt-1">{facilitiesMid.toLocaleString()} facilities</p>
             </div>
             <div className="card p-5" style={{ borderTop: "2px solid #10b981" }}>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">≥ 80% — Active</p>
-              <p className="text-2xl font-bold text-green-600 font-mono tabular-nums">
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1">≥ 80% — Active</p>
+              <p className="text-2xl font-bold text-[#10b981] font-mono tabular-nums">
                 {tierAbove80.length}<span className="text-sm font-normal ml-1">corps</span>
               </p>
               <p className="text-xs mt-1">{facilitiesAbove80.toLocaleString()} facilities</p>
             </div>
             <div className="card p-5" style={{ borderTop: "2px solid #f97316" }}>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Expansion to 80%</p>
-              <p className="text-2xl font-bold text-orange-600 font-mono tabular-nums">
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1">Expansion to 80%</p>
+              <p className="text-2xl font-bold text-[#ea580c] font-mono tabular-nums">
                 {expansionOpportunity.toLocaleString()}
               </p>
               <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>facilities gap in active accounts</p>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -425,7 +460,7 @@ export default function Dashboard() {
         </div>
 
         {/* Product Depth vs. Penetration */}
-        {productDepthData.length > 0 && (
+        {productDepthData.length > 0 ? (
           <div className="card mb-8">
             <h3 className="text-lg font-semibold mb-1">
               Product Depth vs. Facility Penetration
@@ -468,7 +503,7 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        )}
+        ) : null}
 
         {/* Penetration Chart */}
         <div className="card mb-8">
@@ -625,7 +660,7 @@ export default function Dashboard() {
               </label>
               <select
                 value={selectedTaskStatus}
-                onChange={(e) => setSelectedTaskStatus(e.target.value)}
+                onChange={(e) => setSelectedTaskStatus(e.target.value as TaskStatusFilter)}
                 className="filter-select w-full"
               >
                 <option value="all">All Task Statuses</option>
@@ -642,7 +677,7 @@ export default function Dashboard() {
               </label>
               <select
                 value={selectedProduct}
-                onChange={(e) => setSelectedProduct(e.target.value)}
+                onChange={(e) => setSelectedProduct(e.target.value as ProductFilter)}
                 className="filter-select w-full"
               >
                 <option value="all">All Products</option>
@@ -734,10 +769,11 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody >
-                {sortedCorporations.map((corp) => (
-                  <tr key={corp.clickup_task_id} >
+                {sortedCorporations.length > 0 ? (
+                  sortedCorporations.map((corp) => (
+                    <tr key={corp.clickup_task_id} >
                     <td className="">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-text-primary">
                         {corp.corporation_name}
                       </div>
                       <div className="flex gap-3">
@@ -764,7 +800,7 @@ export default function Dashboard() {
                     <td className="">
                       <div className="flex flex-col gap-1">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${
+                          className={`badge ${
                             corp.task_status_label === 'Active'
                               ? 'badge-active'
                               : corp.task_status_label === 'Churned'
@@ -819,7 +855,14 @@ export default function Dashboard() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    No corporations match the selected filters.
+                  </td>
+                </tr>
+              )}
               </tbody>
             </table>
           </div>

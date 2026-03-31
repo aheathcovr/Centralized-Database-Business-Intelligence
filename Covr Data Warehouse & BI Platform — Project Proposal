@@ -79,16 +79,30 @@ The organizing principle of the entire data model is the **Customer Cube** — a
 
 The table below summarizes the six data sources in scope, their integration method, and the current state of identity resolution against ClickUp.
 
-| Source | Domain | Integration | Sync Frequency | Match Rate to ClickUp | Status |
-| --- | --- | --- | --- | --- | --- |
-| **ClickUp** | Operations / Master Record | Airbyte → BigQuery | Daily | — (master key) | Active |
-| **HubSpot** | CRM / Sales | Airbyte → BigQuery | Daily | 99.1% (of records with `covr_id`) | Active |
-| **PostHog** | Product Analytics | Airbyte → BigQuery | Daily | 97.9% (of facilities with `CovrID`) | Active |
-| **Intercom** | Customer Support | Airbyte → BigQuery | Daily | 95.7% (of records with `CovrID`) | Active |
-| **QuickBooks** | Finance / Billing | Airbyte → BigQuery | Daily | 54.8% (known data quality gap) | Active — IDs need remediation |
-| **Definitive Healthcare** | Market / Facility Enrichment | SFTP → BigQuery | Monthly | N/A (enrichment source) | Active |
+| Source | Domain | Integration | Sync Frequency | Status |
+| --- | --- | --- | --- | --- |
+| **ClickUp** | Operations / Master Record | Airbyte → BigQuery | Daily | Active |
+| **HubSpot** | CRM / Sales | Airbyte → BigQuery | Daily | Active |
+| **PostHog** | Product Analytics | Direct → BigQuery | Daily | Active — `covr_id` propagation gap |
+| **Intercom** | Customer Support | Airbyte → BigQuery | Daily | Active — `covr_id` propagation gap |
+| **QuickBooks** | Finance / Billing | Airbyte → BigQuery | Daily | Active — critical data quality gap |
+| **Definitive Healthcare** | Market / Facility Enrichment | SFTP → BigQuery | Monthly | Active |
 
-The QuickBooks match rate gap is a known issue. Unique identifiers will be manually entered into QuickBooks records via the UI as an interim measure while the QuickBooks API is evaluated for a long-term automated solution (see Section 7.1).
+**Match Rate Detail** (as of March 30, 2026 · non-archived ClickUp records with `active` or `onboarding` status · n=2,105)
+
+| System | Has `covr_id` (n=1,075) | | Missing `covr_id` (n=1,030) | | Total (n=2,105) | |
+| --- | --- | --- | --- | --- | --- | --- |
+| | Matched | % | Matched | % | Matched | % |
+| **HubSpot** | 1,072 | 99.7% | 995 | 96.6% | 2,067 | 98.2% |
+| **PostHog** | 1,070 | 99.5% | 0 | 0.0% | 1,070 | 50.8% |
+| **Intercom** | 1,067 | 99.2% | 0 | 0.0% | 1,067 | 50.7% |
+| **QuickBooks** | 72 | 6.7% | 7 | 0.7% | 79 | 3.8% |
+| **Definitive Healthcare** | 552 | 51.3% | 370 | 35.9% | 922 | 43.8% |
+
+**Key findings:**
+- **PostHog and Intercom** have near-perfect match rates when `covr_id` is present, and zero without it — the gap is entirely a `covr_id` propagation problem, not a data quality problem in those systems. Resolving Section 7.2 would immediately recover both to near-100%.
+- **QuickBooks** matching currently relies on exact facility name matching between ClickUp and QBO `CompanyName`. This approach yields ~658 potential matches (~31% of active/onboarding records) but requires a custom Airbyte connector to reach higher fidelity — the pre-built QuickBooks connector does not expose custom fields, including the "Unique ID" field in QBO that is the intended join key. See Section 7.1.
+- **49% of active/onboarding records (1,030 of 2,105) are missing `covr_id`**, making the ID propagation workflow the single highest-leverage data quality action available.
 
 ---
 
@@ -214,7 +228,7 @@ erDiagram
 
     CLICKUP ||--o{ HUBSPOT : "covr_id"
     CLICKUP ||--o{ INTERCOM : "covr_id"
-    CLICKUP ||--o{ QUICKBOOKS : "covr_id"
+    CLICKUP ||--o{ QUICKBOOKS : "covr_id (custom connector req'd)"
     CLICKUP ||--o{ POSTHOG : "covr_id"
     CLICKUP ||--o{ DEFINITIVE : "facility name match"
 ```
@@ -225,15 +239,21 @@ erDiagram
 
 ## 7. Scoped Sub-Projects
 
-### 7.1 QuickBooks Data Quality Remediation (rerun after the matching has been improved
+### 7.1 QuickBooks Identity Resolution
 
-**Problem:** The current QuickBooks-to-ClickUp match rate is 54.8%, driven by missing `covr_id` values on QuickBooks customer records. This gap prevents accurate financial data from being joined to the Customer Cube for a significant portion of the customer base.
+**Problem:** The QuickBooks-to-ClickUp match rate for active/onboarding records is currently 3.8% (79 of 2,105 records), despite QuickBooks containing 1,255 active customers. There are two compounding issues:
 
-**Interim Solution:** Manually enter `covr_id` values into QuickBooks customer records via the QuickBooks UI. This is a one-time remediation effort for existing records.
+1. **The pre-built Airbyte QuickBooks connector does not sync custom fields.** QuickBooks has a "Unique ID" custom field on customer records that is the intended `covr_id` join key. This field is not exposed by Airbyte's standard connector, meaning it never reaches BigQuery regardless of whether values have been entered.
 
-**Long-Term Solution:** Evaluate the QuickBooks API to determine whether `covr_id` can be written back automatically when a new customer is created, eliminating the need for manual entry going forward.
+2. **The existing `company_join_keys` matching was done on a limited basis.** The current join table only reflects a small subset of the possible name-based matches between ClickUp and QuickBooks.
 
-**Owner:** Austin (coordination), Engineering (API evaluation)**Definition of Done:** QuickBooks match rate ≥ 95% against ClickUp records.
+**Interim Solution — Name Matching:** An exact match on facility name between `ClickUp_AirbyteCustom.task.name` and `Quickbooks_Airbyte.customers.CompanyName` yields approximately 658 potential matches (~31% of active/onboarding records) that can be linked today without any additional data entry. This match should be incorporated into the `company_join_keys` rebuild as a stopgap.
+
+**Long-Term Solution — Custom Airbyte Connector:** Build a custom Airbyte source connector for QuickBooks that extends the standard connector to include custom fields in the `customers` stream. Once the "Unique ID" field is flowing into BigQuery, the matching logic in `company_join_keys` can be updated to join on `covr_id` directly, and the name-based fallback can be retained for records where the custom field is not yet populated.
+
+**Owner:** Engineering (connector build), Austin (coordination)
+
+**Definition of Done:** QuickBooks custom fields available in `Quickbooks_Airbyte.customers` in BigQuery; `company_join_keys` match rate for QuickBooks ≥ 90% against active/onboarding ClickUp records.
 
 ### 7.2 New Customer ID Propagation Workflow
 
@@ -351,7 +371,7 @@ erDiagram
 
     CLICKUP ||--o{ HUBSPOT : "covr_id"
     CLICKUP ||--o{ INTERCOM : "covr_id"
-    CLICKUP ||--o{ QUICKBOOKS : "covr_id"
+    CLICKUP ||--o{ QUICKBOOKS : "covr_id (custom connector req'd)"
     CLICKUP ||--o{ POSTHOG : "covr_id"
     CLICKUP ||--o{ DEFINITIVE : "facility name match"
 ```

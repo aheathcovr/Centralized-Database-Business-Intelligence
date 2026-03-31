@@ -28,29 +28,29 @@ WITH
 deal_owners AS (
   SELECT
     d.id AS deal_id,
-    d.owner_id,
-    COALESCE(o.email, CONCAT('owner_', CAST(d.owner_id AS STRING))) AS owner_email,
+    d.properties_hubspot_owner_id AS owner_id,
+    COALESCE(o.email, CONCAT('owner_', CAST(d.properties_hubspot_owner_id AS STRING))) AS owner_email,
     COALESCE(
-      o.firstname,
+      o.firstName,
       REGEXP_EXTRACT(o.email, r'^([^@]+)')
     ) AS owner_first_name,
-    COALESCE(o.lastname, '') AS owner_last_name,
+    COALESCE(o.lastName, '') AS owner_last_name,
     CONCAT(
-      COALESCE(o.firstname, REGEXP_EXTRACT(o.email, r'^([^@]+)')),
+      COALESCE(o.firstName, REGEXP_EXTRACT(o.email, r'^([^@]+)')),
       ' ',
-      COALESCE(o.lastname, '')
+      COALESCE(o.lastName, '')
     ) AS owner_full_name,
-    d.amount,
-    d.dealstage,
-    d.createdate,
-    d.closedate,
-    d.pipeline
-  FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deal` d
-  LEFT JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.owner` o
-    ON d.owner_id = o.owner_id
-  WHERE d.owner_id IS NOT NULL
+    SAFE_CAST(d.properties_amount AS FLOAT64) AS amount,
+    d.properties_dealstage AS dealstage,
+    SAFE_CAST(d.properties_createdate AS TIMESTAMP) AS createdate,
+    SAFE_CAST(d.properties_closedate AS TIMESTAMP) AS closedate,
+    d.properties_pipeline AS pipeline
+  FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deals` d
+  LEFT JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.owners` o
+    ON SAFE_CAST(d.properties_hubspot_owner_id AS STRING) = SAFE_CAST(o.id AS STRING)
+  WHERE d.properties_hubspot_owner_id IS NOT NULL
     AND d.archived = FALSE
-    AND d.createdate IS NOT NULL
+    AND d.properties_createdate IS NOT NULL
 ),
 
 -- ============================================================
@@ -94,7 +94,7 @@ deals_created_monthly AS (
     AVG(COALESCE(do.amount, 0)) AS avg_deal_amount
   FROM deal_owners do
   JOIN month_calendar mc
-    ON DATE_TRUNC(do.createdate, MONTH) = mc.month_start
+    ON DATE_TRUNC(DATE(do.createdate), MONTH) = mc.month_start
   GROUP BY mc.month_start, mc.month_label, mc.quarter_start, mc.quarter_label,
            do.owner_id, do.owner_full_name
 ),
@@ -118,7 +118,7 @@ deals_created_quarterly AS (
     AVG(COALESCE(do.amount, 0)) AS avg_deal_amount
   FROM deal_owners do
   JOIN month_calendar mc
-    ON DATE_TRUNC(do.createdate, MONTH) = mc.month_start
+    ON DATE_TRUNC(DATE(do.createdate), MONTH) = mc.month_start
   GROUP BY mc.quarter_start, mc.quarter_label, do.owner_id, do.owner_full_name
 ),
 
@@ -137,11 +137,11 @@ deals_created_quarterly AS (
 meetings_monthly AS (
   SELECT
     owner_id,
-    DATE_TRUNC(createdate, MONTH) AS month_start,
+    DATE_TRUNC(DATE(createdate), MONTH) AS month_start,
     0 AS meetings_booked  -- Placeholder until HubSpot engagements are synced
   FROM deal_owners
   WHERE FALSE  -- Returns no rows; will be replaced with real meetings query
-  GROUP BY owner_id, DATE_TRUNC(createdate, MONTH)
+  GROUP BY owner_id, DATE_TRUNC(DATE(createdate), MONTH)
 ),
 
 meetings_quarterly AS (
@@ -152,7 +152,7 @@ meetings_quarterly AS (
   FROM (
     SELECT
       owner_id,
-      DATE_TRUNC(createdate, QUARTER) AS quarter_start
+      DATE_TRUNC(DATE(createdate), QUARTER) AS quarter_start
     FROM deal_owners
     WHERE FALSE
   )

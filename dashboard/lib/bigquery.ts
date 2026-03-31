@@ -586,6 +586,7 @@ export async function getPipelineMetrics(params?: {
 
   const [rows] = await bigquery.query({ query, params: queryParams });
   return rows as PipelineMetricsRow[];
+}
 
 // ============================================================
 // Customer Success — CSAT & NPS by period, domain, onboarding

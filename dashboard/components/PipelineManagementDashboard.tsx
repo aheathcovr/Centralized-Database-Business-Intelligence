@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { useQuery } from '@/lib/hooks';
+import { sortData } from '@/lib/utils';
 import {
   BarChart,
   Bar,
@@ -47,51 +49,36 @@ const GROUP_MODES: { value: GroupMode; label: string }[] = [
   { value: 'by_create_quarter', label: 'By Create Quarter' },
 ];
 
-// Default reps to show when grouping by rep
 const DEFAULT_SELECTED_REPS = ['Charles', 'Logan', 'Bradi'];
 
 const CHART_COLORS = ['#22d3ee', '#0891b2', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b'];
 
 export default function PipelineManagementDashboard() {
-  const [allData, setAllData] = useState<PipelineMetricsRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [trailingWindow, setTrailingWindow] = useState<TrailingWindow>('90d');
   const [groupMode, setGroupMode] = useState<GroupMode>('by_rep');
   const [selectedReps, setSelectedReps] = useState<string[]>(DEFAULT_SELECTED_REPS);
 
-  useEffect(() => {
-    fetchAllData();
-  }, []);
-
-  const fetchAllData = async () => {
-    try {
-      setLoading(true);
+  const { data, loading, error, refetch: fetchAllData } = useQuery<{ data: PipelineMetricsRow[] }>(
+    'pipeline-metrics',
+    async () => {
       const response = await fetch('/api/pipeline-metrics');
       if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
       }
-      const result = await response.json();
-      setAllData(result.data);
-    } catch (err) {
-      console.error('Failed to fetch pipeline metrics:', err);
-      setError('Failed to load pipeline metrics. Please refresh the page.');
-    } finally {
-      setLoading(false);
+      return response.json();
     }
-  };
+  );
 
-  // Extract available reps from data (only when group mode is by_rep)
+  const allData = data?.data || [];
+
   const availableReps = useMemo(() => {
     const repRows = allData.filter((row) => row.group_mode === 'by_rep' && row.trailing_window === trailingWindow);
     return repRows.map((row) => row.display_name).sort();
   }, [allData, trailingWindow]);
 
-  // Initialize selectedReps when available reps load (first time only)
   const [repsInitialized, setRepsInitialized] = useState(false);
   useEffect(() => {
     if (!repsInitialized && availableReps.length > 0) {
-      // Match DEFAULT_SELECTED_REPS to available reps (case-insensitive partial match)
       const matched = availableReps.filter((rep) =>
         DEFAULT_SELECTED_REPS.some((defaultRep) =>
           rep.toLowerCase().includes(defaultRep.toLowerCase())
@@ -100,14 +87,12 @@ export default function PipelineManagementDashboard() {
       if (matched.length > 0) {
         setSelectedReps(matched);
       } else {
-        // If no matches found, select all available reps
         setSelectedReps(availableReps);
       }
       setRepsInitialized(true);
     }
   }, [availableReps, repsInitialized]);
 
-  // Toggle a rep in/out of selectedReps
   const toggleRep = (rep: string) => {
     setSelectedReps((prev) =>
       prev.includes(rep) ? prev.filter((r) => r !== rep) : [...prev, rep]
@@ -117,21 +102,17 @@ export default function PipelineManagementDashboard() {
   const selectAllReps = () => setSelectedReps(availableReps);
   const clearAllReps = () => setSelectedReps([]);
 
-  // Filter data by selected group mode, trailing window, and reps
   const filteredData = useMemo(() => {
-    let data = allData.filter(
-      (row) => row.group_mode === groupMode && row.trailing_window === trailingWindow
-    );
-
-    // Apply rep filter only when grouping by rep
-    if (groupMode === 'by_rep' && selectedReps.length > 0) {
-      data = data.filter((row) => selectedReps.includes(row.display_name));
-    }
-
-    return data;
+    // js-combine-iterations: Combine multiple filter conditions into one loop
+    return allData.filter((row) => {
+      if (row.group_mode !== groupMode || row.trailing_window !== trailingWindow) return false;
+      if (groupMode === 'by_rep' && selectedReps.length > 0) {
+        return selectedReps.includes(row.display_name);
+      }
+      return true;
+    });
   }, [allData, groupMode, trailingWindow, selectedReps]);
 
-  // Compute aggregate KPIs across filtered data
   const aggregateKpis = useMemo(() => {
     if (filteredData.length === 0) {
       return {
@@ -144,23 +125,27 @@ export default function PipelineManagementDashboard() {
         totalWonAmount: 0,
       };
     }
+    
+    // js-combine-iterations: Calculate all aggregates in a single pass instead of 5 separate reduces
+    let totalDeals = 0;
+    let totalWon = 0;
+    let totalWonAmount = 0;
+    let totalSalesCycleDays = 0;
+    let totalVelocity = 0;
 
-    const totalDeals = filteredData.reduce((s, r) => s + r.total_deals, 0);
-    const totalWon = filteredData.reduce((s, r) => s + r.deals_won, 0);
-    const totalWonAmount = filteredData.reduce((s, r) => s + r.total_won_amount, 0);
-    const totalSalesCycleDays = filteredData.reduce(
-      (s, r) => s + (r.avg_sales_cycle_days != null ? r.avg_sales_cycle_days * r.deals_won : 0),
-      0
-    );
+    for (const r of filteredData) {
+      totalDeals += r.total_deals;
+      totalWon += r.deals_won;
+      totalWonAmount += r.total_won_amount;
+      if (r.avg_sales_cycle_days != null) totalSalesCycleDays += r.avg_sales_cycle_days * r.deals_won;
+      totalVelocity += r.pipeline_velocity_30d ?? 0;
+    }
 
     const avgCloseRate = totalDeals > 0 ? totalWon / totalDeals : null;
     const avgAsp = totalWon > 0 ? totalWonAmount / totalWon : null;
     const avgSalesCycle = totalWon > 0 ? totalSalesCycleDays / totalWon : null;
-    const avgVelocity = filteredData.reduce(
-      (s, r) => s + (r.pipeline_velocity_30d ?? 0),
-      0
-    ) / filteredData.length;
-
+    const avgVelocity = totalVelocity / filteredData.length;
+    
     return {
       avgCloseRate,
       avgAsp,
@@ -172,8 +157,17 @@ export default function PipelineManagementDashboard() {
     };
   }, [filteredData]);
 
-  // Format chart data for grouped bar chart
-  const chartData = useMemo(() => {
+  type ChartDataRow = {
+    name: string;
+    closeRate: number;
+    asp: number;
+    salesCycle: number;
+    velocity: number;
+    dealsWon: number;
+    totalDeals: number;
+  };
+
+  const chartData = useMemo<ChartDataRow[]>(() => {
     return filteredData.map((row) => ({
       name: row.display_name,
       closeRate: row.close_rate_pct != null ? Math.round(row.close_rate_pct * 100) : 0,
@@ -185,11 +179,10 @@ export default function PipelineManagementDashboard() {
     }));
   }, [filteredData]);
 
-  // Sort data for table
-  const [sortCol, setSortCol] = useState<string>('display_name');
+  const [sortCol, setSortCol] = useState<keyof PipelineMetricsRow>('display_name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-  const handleSort = (col: string) => {
+  const handleSort = (col: keyof PipelineMetricsRow) => {
     if (sortCol === col) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -198,37 +191,31 @@ export default function PipelineManagementDashboard() {
     }
   };
 
-  const sortIcon = (col: string) =>
+  const sortIcon = (col: keyof PipelineMetricsRow) =>
     sortCol === col ? (sortDir === 'asc' ? ' \u2191' : ' \u2193') : ' \u2195';
 
-  const sortedData = [...filteredData].sort((a, b) => {
-    const aVal = (a as Record<string, unknown>)[sortCol];
-    const bVal = (b as Record<string, unknown>)[sortCol];
-    const dir = sortDir === 'asc' ? 1 : -1;
-    if (aVal == null) return 1;
-    if (bVal == null) return -1;
-    if (typeof aVal === 'number' && typeof bVal === 'number') return (aVal - bVal) * dir;
-    return String(aVal).localeCompare(String(bVal)) * dir;
-  });
+  const sortedData = useMemo(() => {
+    return sortData(filteredData, sortCol, sortDir);
+  }, [filteredData, sortCol, sortDir]);
 
   const formatCurrency = (val: number | null) => {
     if (val == null) return 'N/A';
-    if (val >= 1000000) return \`\$\${(val / 1000000).toFixed(1)}M\`;
-    if (val >= 1000) return \`\$\${(val / 1000).toFixed(0)}K\`;
-    return \`\$\${val.toFixed(0)}\`;
+    if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `$${(val / 1000).toFixed(0)}K`;
+    return `$${val.toFixed(0)}`;
   };
 
   const formatPct = (val: number | null) => {
     if (val == null) return 'N/A';
-    return \`\${Math.round(val * 100)}%\`;
+    return `${Math.round(val * 100)}%`;
   };
 
   const formatDays = (val: number | null) => {
     if (val == null) return 'N/A';
-    return \`\${Math.round(val)} days\`;
+    return `${Math.round(val)} days`;
   };
 
-  if (loading) {
+  if (loading && allData.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="spinner"></div>
@@ -240,9 +227,9 @@ export default function PipelineManagementDashboard() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center" role="alert" aria-live="assertive">
-          <p className="text-red-600 font-medium mb-3">{error}</p>
-          <button onClick={fetchAllData} className="btn-primary text-sm">
-            Retry
+          <p className="text-[#ef4444] font-medium mb-3">{error instanceof Error ? error.message : String(error)}</p>
+          <button onClick={fetchAllData} className="btn-primary text-sm" disabled={loading}>
+            {loading ? 'Retrying...' : 'Retry'}
           </button>
         </div>
       </div>
@@ -251,7 +238,6 @@ export default function PipelineManagementDashboard() {
 
   return (
     <div>
-      {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">Pipeline Management</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
@@ -259,10 +245,8 @@ export default function PipelineManagementDashboard() {
         </p>
       </div>
 
-      {/* Filter Bar */}
       <div className="card mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Trailing Window Selector */}
           <div>
             <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>
               Time Window
@@ -272,11 +256,10 @@ export default function PipelineManagementDashboard() {
                 <button
                   key={tw.value}
                   onClick={() => setTrailingWindow(tw.value)}
-                  className={\`px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 cursor-pointer \$
-                    trailingWindow === tw.value
-                      ? 'bg-covr-blue text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }\`
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 cursor-pointer ${trailingWindow === tw.value
+                      ? 'bg-accent text-canvas font-semibold shadow-[0_0_12px_rgba(34,211,238,0.25)]'
+                      : 'bg-elevated text-text-secondary hover:bg-card-hover hover:text-text-primary border border-[var(--border-subtle)]'
+                    }`}
                 >
                   {tw.label}
                 </button>
@@ -284,7 +267,6 @@ export default function PipelineManagementDashboard() {
             </div>
           </div>
 
-          {/* Group Mode Selector */}
           <div>
             <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>
               Group By
@@ -294,11 +276,10 @@ export default function PipelineManagementDashboard() {
                 <button
                   key={gm.value}
                   onClick={() => setGroupMode(gm.value)}
-                  className={\`px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 cursor-pointer \$
-                    groupMode === gm.value
-                      ? 'bg-covr-blue text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }\`
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 cursor-pointer ${groupMode === gm.value
+                      ? 'bg-accent text-canvas font-semibold shadow-[0_0_12px_rgba(34,211,238,0.25)]'
+                      : 'bg-elevated text-text-secondary hover:bg-card-hover hover:text-text-primary border border-[var(--border-subtle)]'
+                    }`}
                 >
                   {gm.label}
                 </button>
@@ -307,8 +288,7 @@ export default function PipelineManagementDashboard() {
           </div>
         </div>
 
-        {/* Sales Rep Filter (only visible when grouping by rep) */}
-        {groupMode === 'by_rep' && availableReps.length > 0 && (
+        {groupMode === 'by_rep' && availableReps.length > 0 ? (
           <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border-color, rgba(148,163,184,0.15))' }}>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[11px] font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
@@ -337,32 +317,30 @@ export default function PipelineManagementDashboard() {
                 <button
                   key={rep}
                   onClick={() => toggleRep(rep)}
-                  className={\`px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 cursor-pointer \$
-                    selectedReps.includes(rep)
-                      ? 'bg-covr-blue text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }\`
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-150 cursor-pointer ${selectedReps.includes(rep)
+                      ? 'bg-accent text-canvas font-semibold shadow-[0_0_12px_rgba(34,211,238,0.25)]'
+                      : 'bg-elevated text-text-secondary hover:bg-card-hover hover:text-text-primary border border-[var(--border-subtle)]'
+                    }`}
                 >
                   {rep}
                 </button>
               ))}
             </div>
-            {selectedReps.length === 0 && (
+            {selectedReps.length === 0 ? (
               <p className="text-xs text-amber-500 mt-2">
                 No reps selected. Select at least one rep to view metrics.
               </p>
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* KPI Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <KpiCard
           label="Close Rate"
           value={formatPct(aggregateKpis.avgCloseRate)}
           color="#22d3ee"
-          subtext={\`\${aggregateKpis.totalWon} won / \${aggregateKpis.totalDeals} total deals\`}
+          subtext={`${aggregateKpis.totalWon} won / ${aggregateKpis.totalDeals} total deals`}
         />
         <KpiCard
           label="Avg Selling Price"
@@ -384,10 +362,8 @@ export default function PipelineManagementDashboard() {
         />
       </div>
 
-      {/* Charts */}
-      {chartData.length > 0 && (
+      {chartData.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Close Rate & ASP by Group */}
           <div className="card">
             <h3 className="text-lg font-semibold mb-1">Close Rate & ASP</h3>
             <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
@@ -400,7 +376,7 @@ export default function PipelineManagementDashboard() {
                 <YAxis dataKey="name" type="category" width={groupMode === 'by_rep' ? 80 : 100} tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
                 <Tooltip
                   formatter={(value: number, name: string) => [
-                    name === 'closeRate' ? \`\${value}%\` : \`\$\${value.toLocaleString()}\`,
+                    name === 'closeRate' ? `${value}%` : `$${value.toLocaleString()}`,
                     name === 'closeRate' ? 'Close Rate' : 'ASP',
                   ]}
                 />
@@ -411,7 +387,6 @@ export default function PipelineManagementDashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* Sales Cycle & Velocity by Group */}
           <div className="card">
             <h3 className="text-lg font-semibold mb-1">Sales Cycle & Velocity</h3>
             <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
@@ -424,7 +399,7 @@ export default function PipelineManagementDashboard() {
                 <YAxis dataKey="name" type="category" width={groupMode === 'by_rep' ? 80 : 100} tick={{ fontFamily: 'var(--font-fira-sans)', fill: '#94a3b8', fontSize: 12 }} />
                 <Tooltip
                   formatter={(value: number, name: string) => [
-                    name === 'salesCycle' ? \`\${value} days\` : \`\$\${value.toLocaleString()}\`,
+                    name === 'salesCycle' ? `${value} days` : `$${value.toLocaleString()}`,
                     name === 'salesCycle' ? 'Avg Sales Cycle' : 'Velocity',
                   ]}
                 />
@@ -435,9 +410,8 @@ export default function PipelineManagementDashboard() {
             </ResponsiveContainer>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Data Table */}
       <div className="card overflow-hidden">
         <h3 className="text-lg font-semibold mb-4">
           Pipeline Metrics ({sortedData.length} {groupMode === 'by_rep' ? 'reps' : 'periods'})
@@ -474,46 +448,52 @@ export default function PipelineManagementDashboard() {
               </tr>
             </thead>
             <tbody>
-              {sortedData.map((row) => (
-                <tr key={row.group_key + '_' + row.trailing_window}>
-                  <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {row.display_name}
-                  </td>
-                  <td style={{ textAlign: 'right' }} className="font-mono tabular-nums">
-                    {row.total_deals}
-                  </td>
-                  <td style={{ textAlign: 'right' }} className="font-mono tabular-nums text-green-600">
-                    {row.deals_won}
-                  </td>
-                  <td style={{ textAlign: 'right' }} className="font-mono tabular-nums text-red-600">
-                    {row.deals_lost}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <span className={\`inline-flex px-2 py-1 text-xs font-semibold rounded-full \$
-                      (row.close_rate_pct ?? 0) >= 0.3 ? 'bg-green-100 text-green-800' :
-                      (row.close_rate_pct ?? 0) >= 0.15 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }\`}>
-                      {formatPct(row.close_rate_pct)}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'right' }} className="font-mono tabular-nums">
-                    {formatCurrency(row.asp)}
-                  </td>
-                  <td style={{ textAlign: 'right' }} className="font-mono tabular-nums">
-                    {formatDays(row.avg_sales_cycle_days)}
-                  </td>
-                  <td style={{ textAlign: 'right' }} className="font-mono tabular-nums">
-                    {formatCurrency(row.pipeline_velocity_30d)}
+              {sortedData.length > 0 ? (
+                sortedData.map((row) => (
+                  <tr key={row.group_key + '_' + row.trailing_window}>
+                    <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                      {row.display_name}
+                    </td>
+                    <td style={{ textAlign: 'right' }} className="font-mono tabular-nums">
+                      {row.total_deals}
+                    </td>
+                    <td style={{ textAlign: 'right' }} className="font-mono tabular-nums text-[#10b981]">
+                      {row.deals_won}
+                    </td>
+                    <td style={{ textAlign: 'right' }} className="font-mono tabular-nums text-[#ef4444]">
+                      {row.deals_lost}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <span className={`badge ${(row.close_rate_pct ?? 0) >= 0.3 ? 'badge-active' :
+                          (row.close_rate_pct ?? 0) >= 0.15 ? 'badge-stalled' :
+                            'badge-churned'
+                        }`}>
+                        {formatPct(row.close_rate_pct)}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }} className="font-mono tabular-nums">
+                      {formatCurrency(row.asp)}
+                    </td>
+                    <td style={{ textAlign: 'right' }} className="font-mono tabular-nums">
+                      {formatDays(row.avg_sales_cycle_days)}
+                    </td>
+                    <td style={{ textAlign: 'right' }} className="font-mono tabular-nums">
+                      {formatCurrency(row.pipeline_velocity_30d)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>
+                    No pipeline metrics match the selected filters.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Footer */}
       <div className="card mt-6">
         <div className="text-center py-4">
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
