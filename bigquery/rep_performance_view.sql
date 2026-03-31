@@ -1,7 +1,7 @@
 -- Rep Performance View
 -- Created: 2026-03-30
 -- Dataset: revops_analytics.rep_performance_view
--- Source: HubSpot_Airbyte.deal, HubSpot_Airbyte.deal_property_history
+-- Source: HubSpot_Airbyte.deals, HubSpot_Airbyte.owners
 --
 -- Aggregates deal outcomes by owner and month so the dashboard
 -- Rep Performance page can show live data instead of sample data.
@@ -26,28 +26,28 @@ WITH
 
 deal_owners AS (
   SELECT
-    d.deal_id,
-    d.owner_id,
-    COALESCE(o.email, CONCAT('owner_', CAST(d.owner_id AS STRING))) AS owner_email,
+    d.id AS deal_id,
+    d.properties_hubspot_owner_id AS owner_id,
+    COALESCE(o.email, CONCAT('owner_', CAST(d.properties_hubspot_owner_id AS STRING))) AS owner_email,
     COALESCE(
-      o.firstname,
+      o.firstName,
       REGEXP_EXTRACT(o.email, r'^([^@]+)')
     ) AS owner_first_name,
-    COALESCE(o.lastname, '') AS owner_last_name,
+    COALESCE(o.lastName, '') AS owner_last_name,
     CONCAT(
-      COALESCE(o.firstname, REGEXP_EXTRACT(o.email, r'^([^@]+)')),
+      COALESCE(o.firstName, REGEXP_EXTRACT(o.email, r'^([^@]+)')),
       ' ',
-      COALESCE(o.lastname, '')
+      COALESCE(o.lastName, '')
     ) AS owner_full_name,
-    d.amount,
-    d.dealstage,
-    d.createdate,
-    d.closedate,
-    d.pipeline
-  FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deal` d
-  LEFT JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.owner` o
-    ON d.owner_id = o.owner_id
-  WHERE d.owner_id IS NOT NULL
+    SAFE_CAST(d.properties_amount AS FLOAT64) AS amount,
+    d.properties_dealstage AS dealstage,
+    SAFE_CAST(d.properties_createdate AS TIMESTAMP) AS createdate,
+    SAFE_CAST(d.properties_closedate AS TIMESTAMP) AS closedate,
+    d.properties_pipeline AS pipeline
+  FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deals` d
+  LEFT JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.owners` o
+    ON SAFE_CAST(d.properties_hubspot_owner_id AS STRING) = SAFE_CAST(o.id AS STRING)
+  WHERE d.properties_hubspot_owner_id IS NOT NULL
     AND d.archived = FALSE
 ),
 
@@ -86,7 +86,7 @@ deals_won AS (
     AVG(COALESCE(do.amount, 0)) AS avg_deal_size
   FROM deal_owners do
   JOIN month_calendar mc
-    ON DATE_TRUNC(do.closedate, MONTH) = mc.month_start
+    ON DATE(DATE_TRUNC(do.closedate, MONTH)) = mc.month_start
   WHERE do.dealstage = 'closedwon'
     AND do.closedate IS NOT NULL
   GROUP BY mc.month_start, mc.month_label, do.owner_id, do.owner_full_name
@@ -103,7 +103,7 @@ deals_lost AS (
     COUNT(*) AS deals_lost
   FROM deal_owners do
   JOIN month_calendar mc
-    ON DATE_TRUNC(do.closedate, MONTH) = mc.month_start
+    ON DATE(DATE_TRUNC(do.closedate, MONTH)) = mc.month_start
   WHERE do.dealstage = 'closedlost'
     AND do.closedate IS NOT NULL
   GROUP BY mc.month_start, do.owner_id
@@ -122,7 +122,7 @@ pipeline_entered AS (
     SUM(COALESCE(do.amount, 0)) AS pipeline_entered_amount
   FROM deal_owners do
   JOIN month_calendar mc
-    ON DATE_TRUNC(do.createdate, MONTH) = mc.month_start
+    ON DATE(DATE_TRUNC(do.createdate, MONTH)) = mc.month_start
   WHERE do.createdate IS NOT NULL
   GROUP BY mc.month_start, do.owner_id
 ),

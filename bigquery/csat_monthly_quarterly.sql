@@ -25,15 +25,26 @@ monthly AS (
     CASE WHEN SUM(csat_total) > 0 THEN ROUND(SUM(csat_positive) * 100.0 / SUM(csat_total), 2) ELSE NULL END AS csat_score_pct
   FROM weekly GROUP BY 1, 2, 3
 ),
-quarterly AS (
+quarterly_prep AS (
   SELECT
     DATE_TRUNC(week_start, QUARTER) AS period_start,
+    EXTRACT(QUARTER FROM DATE_TRUNC(week_start, QUARTER)) AS quarter_num,
+    EXTRACT(YEAR FROM DATE_TRUNC(week_start, QUARTER)) AS year_num,
+    csat_positive,
+    csat_negative,
+    csat_total
+  FROM weekly
+),
+quarterly AS (
+  SELECT
+    period_start,
     'quarter' AS period_type,
-    FORMAT_DATE('%Y-Q', DATE_TRUNC(week_start, QUARTER)) || CAST(EXTRACT(QUARTER FROM week_start) AS STRING) AS period_label,
+    FORMAT('Q%d %d', quarter_num, year_num) AS period_label,
     SUM(csat_positive) AS csat_positive,
     SUM(csat_negative) AS csat_negative,
     SUM(csat_total) AS csat_total,
     CASE WHEN SUM(csat_total) > 0 THEN ROUND(SUM(csat_positive) * 100.0 / SUM(csat_total), 2) ELSE NULL END AS csat_score_pct
-  FROM weekly GROUP BY 1, 2
+  FROM quarterly_prep
+  GROUP BY period_start, period_type, period_label
 )
 SELECT * FROM monthly UNION ALL SELECT * FROM quarterly ORDER BY period_type, period_start DESC;

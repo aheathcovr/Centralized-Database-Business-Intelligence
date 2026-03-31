@@ -30,6 +30,7 @@ WITH nps_source AS (
     CAST(NULL AS INT64) AS nps_score,
     CAST(NULL AS STRING) AS domain,
     CAST(NULL AS STRING) AS promoter_type
+  FROM (SELECT 1)  -- Dummy FROM clause to make the query valid
   WHERE FALSE
 ),
 
@@ -54,12 +55,21 @@ monthly AS (
 ),
 
 -- Quarterly aggregation
-quarterly AS (
+quarterly_prep AS (
   SELECT
     DATE_TRUNC(survey_date, QUARTER) AS period_start,
+    EXTRACT(QUARTER FROM DATE_TRUNC(survey_date, QUARTER)) AS quarter_num,
+    EXTRACT(YEAR FROM DATE_TRUNC(survey_date, QUARTER)) AS year_num,
+    promoter_type
+  FROM nps_source
+  WHERE survey_date IS NOT NULL
+),
+
+quarterly AS (
+  SELECT
+    period_start,
     'quarter' AS period_type,
-    FORMAT_DATE('%Y-Q', DATE_TRUNC(survey_date, QUARTER))
-      || CAST(EXTRACT(QUARTER FROM survey_date) AS STRING) AS period_label,
+    FORMAT('Q%d %d', quarter_num, year_num) AS period_label,
     COUNT(*) AS total_responses,
     COUNTIF(promoter_type = 'promoter') AS promoters,
     COUNTIF(promoter_type = 'passive') AS passives,
@@ -69,9 +79,8 @@ quarterly AS (
       THEN ROUND((COUNTIF(promoter_type = 'promoter') - COUNTIF(promoter_type = 'detractor')) * 100.0 / COUNT(*), 2)
       ELSE NULL
     END AS nps_score
-  FROM nps_source
-  WHERE survey_date IS NOT NULL
-  GROUP BY 1, 2
+  FROM quarterly_prep
+  GROUP BY period_start, period_type, period_label
 )
 
 SELECT * FROM monthly

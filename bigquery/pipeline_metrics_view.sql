@@ -1,7 +1,7 @@
 -- Pipeline Management Metrics View
 -- Created: 2026-03-30
 -- Dataset: revops_analytics.pipeline_metrics_view
--- Source: HubSpot_Airbyte.deal, HubSpot_Airbyte.owner
+-- Source: HubSpot_Airbyte.deals, HubSpot_Airbyte.owners
 --
 -- Supports three grouping modes via query parameters:
 --   1. by_rep: metrics grouped by sales rep (owner)
@@ -26,32 +26,32 @@ WITH
 
 deal_data AS (
   SELECT
-    d.deal_id,
-    d.owner_id,
+    d.id AS deal_id,
+    d.properties_hubspot_owner_id AS owner_id,
     COALESCE(
-      o.firstname,
+      o.firstName,
       REGEXP_EXTRACT(o.email, r'^([^@]+)')
     ) AS owner_first_name,
-    COALESCE(o.lastname, '') AS owner_last_name,
+    COALESCE(o.lastName, '') AS owner_last_name,
     CONCAT(
-      COALESCE(o.firstname, REGEXP_EXTRACT(o.email, r'^([^@]+)')),
+      COALESCE(o.firstName, REGEXP_EXTRACT(o.email, r'^([^@]+)')),
       ' ',
-      COALESCE(o.lastname, '')
+      COALESCE(o.lastName, '')
     ) AS owner_full_name,
-    d.amount,
-    d.dealstage,
-    d.createdate,
-    d.closedate,
-    d.pipeline,
+    SAFE_CAST(d.properties_amount AS FLOAT64) AS amount,
+    d.properties_dealstage AS dealstage,
+    SAFE_CAST(d.properties_createdate AS TIMESTAMP) AS createdate,
+    SAFE_CAST(d.properties_closedate AS TIMESTAMP) AS closedate,
+    d.properties_pipeline AS pipeline,
     CASE
-      WHEN d.closedate IS NOT NULL AND d.createdate IS NOT NULL
-      THEN DATE_DIFF(DATE(d.closedate), DATE(d.createdate), DAY)
+      WHEN d.properties_closedate IS NOT NULL AND d.properties_createdate IS NOT NULL
+      THEN DATE_DIFF(DATE(d.properties_closedate), DATE(d.properties_createdate), DAY)
       ELSE NULL
     END AS sales_cycle_days
-  FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deal` d
-  LEFT JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.owner` o
-    ON d.owner_id = o.owner_id
-  WHERE d.owner_id IS NOT NULL
+  FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deals` d
+  LEFT JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.owners` o
+    ON SAFE_CAST(d.properties_hubspot_owner_id AS STRING) = SAFE_CAST(o.id AS STRING)
+  WHERE d.properties_hubspot_owner_id IS NOT NULL
     AND d.archived = FALSE
 ),
 
