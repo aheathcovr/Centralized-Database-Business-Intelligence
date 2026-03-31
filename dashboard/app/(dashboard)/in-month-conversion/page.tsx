@@ -35,6 +35,7 @@ interface InMonthConversionRow {
   dollar_conversion_pct: number | null;
   pushed_expected_to_expected: number;
   pushed_expected_to_later: number;
+  deal_owner_id: string | null;
   _loaded_at: string;
 }
 

@@ -300,6 +300,7 @@ monthly_aggregates AS (
   SELECT
     month_start,
     month_label,
+    deal_owner_id,
     -- Entering pipeline (Expected to close this month)
     COUNTIF(entering_origin = 'Expected') AS entering_expected,
     COUNTIF(entering_origin = 'Later Month') AS entering_later_month,
@@ -322,7 +323,7 @@ monthly_aggregates AS (
     SUM(CASE WHEN outcome = 'Lost' AND entering_origin = 'Expected' THEN deal_amount ELSE 0 END) AS lost_amount_expected,
     SUM(CASE WHEN outcome = 'Pushed' AND entering_origin = 'Expected' THEN deal_amount ELSE 0 END) AS pushed_amount_expected
   FROM deal_outcomes
-  GROUP BY month_start, month_label
+  GROUP BY month_start, month_label, deal_owner_id
 ),
 
 -- ============================================================
@@ -337,6 +338,9 @@ final_output AS (
     ma.month_label,
     EXTRACT(YEAR FROM ma.month_start) AS year,
     EXTRACT(MONTH FROM ma.month_start) AS month_number,
+
+    -- ========== OWNER ==========
+    ma.deal_owner_id,
 
     -- ========== ENTERING PIPELINE ==========
     ma.entering_expected,

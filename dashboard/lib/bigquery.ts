@@ -373,6 +373,7 @@ export interface InMonthConversionRow {
   dollar_conversion_pct: number | null;
   pushed_expected_to_expected: number;
   pushed_expected_to_later: number;
+  deal_owner_id: string | null;
   _loaded_at: string;
 }
 
@@ -409,10 +410,54 @@ export async function getInMonthConversion(params?: {
   `;
 
   const [rows] = await bigquery.query({ query, params: queryParams });
-  return rows.map((row: any) => ({
+  const mapped = rows.map((row: any) => ({
     ...row,
     month_start: bqDateToString(row.month_start),
   })) as InMonthConversionRow[];
+
+  // When no owner filter, re-aggregate across owners to produce one row per month
+  if (!params?.deal_owner_id) {
+    const byMonth = new Map<string, InMonthConversionRow>();
+    for (const row of mapped) {
+      const key = row.month_start;
+      const existing = byMonth.get(key);
+      if (!existing) {
+        byMonth.set(key, { ...row, deal_owner_id: null });
+      } else {
+        existing.entering_expected += row.entering_expected;
+        existing.entering_later_month += row.entering_later_month;
+        existing.entering_total += row.entering_total;
+        existing.won_from_expected += row.won_from_expected;
+        existing.lost_from_expected += row.lost_from_expected;
+        existing.pushed_from_expected += row.pushed_from_expected;
+        existing.won_total += row.won_total;
+        existing.lost_total += row.lost_total;
+        existing.pushed_total += row.pushed_total;
+        existing.no_change_total += row.no_change_total;
+        existing.won_amount_expected += row.won_amount_expected;
+        existing.entering_amount_expected += row.entering_amount_expected;
+        existing.lost_amount_expected += row.lost_amount_expected;
+        existing.pushed_amount_expected += row.pushed_amount_expected;
+        existing.pushed_expected_to_expected += row.pushed_expected_to_expected;
+        existing.pushed_expected_to_later += row.pushed_expected_to_later;
+      }
+    }
+    // Recompute ratios after aggregation
+    const aggregated = Array.from(byMonth.values());
+    for (const row of aggregated) {
+      const resolved = row.won_from_expected + row.lost_from_expected + row.pushed_from_expected;
+      row.in_month_conversion_pct = resolved > 0 ? row.won_from_expected / resolved : null;
+      const resolvedWL = row.won_from_expected + row.lost_from_expected;
+      row.win_rate_pct = resolvedWL > 0 ? row.won_from_expected / resolvedWL : null;
+      row.loss_rate_pct = resolvedWL > 0 ? row.lost_from_expected / resolvedWL : null;
+      row.push_rate_pct = row.entering_expected > 0 ? row.pushed_from_expected / row.entering_expected : null;
+      row.realized_rate_pct = row.entering_expected > 0 ? resolvedWL / row.entering_expected : null;
+      row.dollar_conversion_pct = row.entering_amount_expected > 0 ? row.won_amount_expected / row.entering_amount_expected : null;
+    }
+    return aggregated.sort((a, b) => a.month_start.localeCompare(b.month_start));
+  }
+
+  return mapped;
 }
 
 // ============================================================
