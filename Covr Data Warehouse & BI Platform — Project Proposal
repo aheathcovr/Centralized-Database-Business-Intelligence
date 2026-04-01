@@ -4,25 +4,6 @@
 
 ---
 
-Andrew, Jim, jeff (optional) reviewers
-
-
-
-prioritize across groups one to two reports that need to be built
-
-- timeline
-
-POC
-
-- three to four reports that could be built that touch the most sources
-
-
-
-in scope/ out of scope visualizations
-
-
-
-
 
 ## 1. Executive Summary
 
@@ -129,16 +110,70 @@ The following section captures the must-have and nice-to-have data needs gathere
 
 **Must-Have Outputs:**
 
-** AI slop ***
+#### Flow Shift Engagement — Open vs. Filled Shifts
+*How deeply are facility schedulers and employees actually using Flow?*
+
+The CS team currently has no way to view shift data historically — they can only inspect future shifts through the Covr product UI, and occasionally piece together engagement signals from SMS alert message history sent to schedulers. A historical view of open vs. filled shifts by facility would allow CS to surface engagement problems at both the scheduler and employee level before they become churn signals.
 
 | Metric / Artifact | Description | Source(s) |
 | --- | --- | --- |
-| Customer Health Score | Green / Yellow / Red classification with NPS, bug count, adoption rate | Intercom, PostHog, ClickUp |
-| Product Adoption Metrics | WAU/DAU by role, feature adoption rate, open vs. filled shifts | PostHog, CovrDB |
-| Invoice Visibility | Open invoices vs. current — enables proactive CS outreach | QuickBooks, ClickUp |
-| Onboarding Timeline | Start date, go-live date, contacts involved, custom feature commitments | ClickUp |
-| Agency & Overtime Metrics | Agency hours, overtime, PPD tied to CMS star ratings | PostHog, CovrDB |
-| QBR / Corporate Aggregation | Aggregate overtime and agency usage across all facilities in a corporation | PostHog, ClickUp |
+| Open Shifts Created | Count of shifts created by facility schedulers, by facility and time period | CovrDB |
+| Filled Shifts | Count of shifts claimed or filled by facility employees, by facility and time period | CovrDB |
+| Fill Rate % | Filled shifts ÷ open shifts created — primary engagement signal | CovrDB |
+| Historical Shift Trend | Weekly or monthly trend of open vs. filled shifts per facility, going back to activation date | CovrDB |
+
+**Business use case:** Identify facilities with low fill rates (employee-side disengagement) vs. facilities not creating shifts (scheduler-side disengagement) — two distinct intervention paths for the CS team.
+
+---
+
+#### Flow & View Labor Metrics — Agency Hours & Overtime
+*Can we quantify the ROI of overtime and agency reduction for active customers?*
+
+CS needs agency management metrics to build a business case and ROI narrative for active Flow customers. Additionally, the team wants to pull whatever View customer labor data is available related to overtime or agency usage, including data from the third-party PBJ (Payroll-Based Journal) dataset.
+
+| Metric / Artifact | Description | Source(s) |
+| --- | --- | --- |
+| Overtime % | Overtime hours as a percentage of total hours worked, by facility and period | CovrDB (Flow), View product data |
+| Agency Hours | Total agency hours logged per facility per period | CovrDB (Flow), View product data |
+| Agency Hour Trend | Month-over-month change in agency hours — used to show reduction after Flow adoption | CovrDB (Flow) |
+| PBJ Labor Data | Third-party Payroll-Based Journal data for overtime and agency usage where available | PBJ (third-party upload) |
+| Pre/Post Adoption Comparison | Agency hours and OT % before and after Flow go-live date, per facility | CovrDB, ClickUp (go-live date) |
+
+**Business use case:** Quantify overtime reduction and agency cost savings attributable to Flow adoption; data asset for CS-led QBRs and renewal conversations.
+
+---
+
+#### Billing Audit — QuickBooks vs. ClickUp Subscription Properties
+*Are customers being charged the right amount for the features they're subscribed to?*
+
+CS needs to be able to compare what QuickBooks is billing a customer against the monthly billing amount and product subscription recorded in ClickUp. Discrepancies surface either overcharges (CS relationship risk) or undercharges (revenue leakage).
+
+| Metric / Artifact | Description | Source(s) |
+| --- | --- | --- |
+| ClickUp Monthly Billing Amount | The billing amount recorded on the ClickUp customer record (custom field) | ClickUp |
+| QuickBooks Invoiced Amount | Most recent or average monthly invoice amount for the matching customer | QuickBooks |
+| Billing Delta | QuickBooks amount − ClickUp amount; flags discrepancies for CS review | QuickBooks, ClickUp |
+| Subscribed Products | Products recorded as active on the ClickUp record (Flow, View, Sync) | ClickUp |
+| Billing Discrepancy Flag | Binary flag for records where delta exceeds a defined threshold | QuickBooks, ClickUp |
+
+**Dependency:** This output requires the QuickBooks identity resolution work in Section 7.1 to reach sufficient match rates before it is actionable at scale.
+
+---
+
+#### Corporate QBR Aggregation
+*How is an entire corporate network performing — aggregate view for regional and executive leadership?*
+
+CS needs to aggregate facility-level metrics across an entire corporation for use in quarterly business reviews (QBRs) with regional or corporate leadership. This mirrors the walletshare corporation-level view but focused on operational labor metrics rather than product penetration.
+
+| Metric / Artifact | Description | Source(s) |
+| --- | --- | --- |
+| Corporate Overtime % | Aggregate overtime percentage across all facilities in a corporation | CovrDB, View product data |
+| Corporate Agency Hours | Total agency hours across all facilities in a corporation, by period | CovrDB, View product data |
+| Facility-Level Drill-Down | Individual facility rows within the corporate view — identify outliers | CovrDB, ClickUp |
+| Network Fill Rate | Aggregate open vs. filled shift fill rate across all Flow facilities in the corp | CovrDB |
+| QBR Time Range | Configurable quarter or trailing-period selector for QBR preparation | — |
+
+**Business use case:** Provide CS with a self-serve report they can run before each QBR rather than manually compiling facility exports; anchors executive conversations in network-wide data.
 
 ### 5.3 Product
 
@@ -154,15 +189,60 @@ The following section captures the must-have and nice-to-have data needs gathere
 
 ### 5.4 Sales
 
+The three must-have dashboards for Sales are **Pipeline Generation**, **Pipeline Management**, and **Walletshare**. All three are built and live in the current Next.js BI layer sourcing from BigQuery views (`pipeline_generation_view`, `pipeline_metrics_view`, `corp_penetration_view`).
+
 **Must-Have Outputs:**
+
+#### Pipeline Generation Dashboard
+Answers: *How much pipeline are we creating, and who is creating it?*
 
 | Metric / Artifact | Description | Source(s) |
 | --- | --- | --- |
-| Sales Funnel | Lead source, opportunity date, channel, rep, close date | HubSpot |
-| CAC | Cost of customer acquisition by channel and rep | HubSpot, QuickBooks |
-| Deal Composition | Services closed, features by product, custom work commitments | HubSpot, ClickUp |
-| Buyer Intelligence | Contacts involved in demos vs. signing, roles/titles | HubSpot |
-| Upsell / Down-sell Events | Service and billing changes over time | HubSpot, QuickBooks |
+| Total Pipeline Generated | Sum of deal amounts created in the period | HubSpot |
+| Deals Created | Count of new deals entered into pipeline | HubSpot |
+| Avg Deal Size | Average deal amount per new deal | HubSpot |
+| Meetings Booked | Count of meetings scheduled per rep / period (awaiting HubSpot engagements sync) | HubSpot |
+| Pipeline Movement | Net change in pipeline value period-over-period (waterfall) | HubSpot |
+| Rep Quota Attainment | Pipeline created vs. quota target per rep | HubSpot |
+
+**Grouping options:** By sales rep · By month · By quarter
+**Visualizations:** Bar chart (pipeline by period), bar chart (deals + meetings), waterfall (pipeline movement), funnel (meetings → deals → pipeline), bullet chart (quota attainment), pivot table (rep × period)
+
+---
+
+#### Pipeline Management Dashboard
+Answers: *How efficiently are we converting pipeline to revenue?*
+
+| Metric / Artifact | Description | Source(s) |
+| --- | --- | --- |
+| Close Rate % | Deals won ÷ deals entered pipeline; status thresholds: ≥30% active, ≥15% stalled, <15% churned | HubSpot |
+| ASP (Avg Selling Price) | Total won amount ÷ deals won | HubSpot |
+| Avg Sales Cycle | Average days from deal create to close (won deals only) | HubSpot |
+| Pipeline Velocity | Monthly revenue throughput: `($ won ÷ total_sales_cycle_days) × 30` | HubSpot |
+| Deal Stage Breakdown | Open / won / lost deal counts and amounts by rep or period | HubSpot |
+| Total Pipeline Amount | Sum of all open deal amounts | HubSpot |
+
+**Grouping options:** By sales rep · By create month · By create quarter
+**Time window filters:** 30d · 90d · 180d · All time
+**Visualizations:** KPI cards (close rate, ASP, sales cycle, velocity), bar charts (close rate & ASP by group; sales cycle & velocity by group), sortable metrics table
+
+---
+
+#### Walletshare Dashboard
+Answers: *How deeply are we penetrating our existing corporate accounts?*
+
+| Metric / Artifact | Description | Source(s) |
+| --- | --- | --- |
+| Active Facilities | Total facilities actively using Flow and/or View (active, onboarding, or implementation status) | ClickUp, Definitive Healthcare |
+| Avg Walletshare % | Active facilities ÷ total DH-matched facilities per corporation | ClickUp, Definitive Healthcare |
+| Win-Back Opportunities | Churned or offboarding facilities with recoverable revenue potential | ClickUp |
+| No-Start Opportunities | Facilities matched to a corporation but never activated | ClickUp |
+| Stalled Opportunities | Facilities in stalled status — mid-cycle at risk | ClickUp |
+| Untapped DH Facilities | Definitive Healthcare-matched facilities not yet linked in ClickUp (market whitespace) | Definitive Healthcare |
+| Product Mix Breakdown | Active facility counts by product combination: Flow + View, Flow only, View only, Sync | ClickUp |
+
+**Grouping:** By corporation
+**Visualizations:** Summary KPI cards, stacked bar (walletshare decomposition by corp), treemap (corp scale by total facilities; color = walletshare %), scatter plot (total DH facilities vs. walletshare % vs. active facilities), walletshare distribution histogram (0–10%, 11–25%, 26–50%, 51–75%, 76–100%), detailed corp data table
 
 ---
 
@@ -172,14 +252,7 @@ The following section captures the must-have and nice-to-have data needs gathere
 
 The diagram below illustrates the complete data flow from source systems through ingestion, transformation, and into the BI layer. All API-connected sources flow through **Airbyte** on a daily schedule. Definitive Healthcare data is loaded via a monthly SFTP upload directly into BigQuery.
 
-![ETL Flow Diagram](https://private-us-east-1.manuscdn.com/sessionFile/OqPOo1zq2ZhayriBXl37wA/sandbox/jHnLbO5gqBmKSVlPS7Bxxu-images_1772209171569_na1fn_L2hvbWUvdWJ1bnR1L2V0bA.png?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvT3FQT28xenEyWmhheXJpQlhsMzd3QS9zYW5kYm94L2pIbkxiTzVncUJtS1NWbFBTN0J4eHUtaW1hZ2VzXzE3NzIyMDkxNzE1NjlfbmExZm5fTDJodmJXVXZkV0oxYm5SMUwyVjBiQS5wbmciLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTg3NjE2MDB9fX1dfQ__&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=MwUGqAsRRFL-NShMZ02vqaEvxOgakYn4w5PVtdP6QRGJaLDoxaAZvYG7HrGfrJL~6uKZ8Sy5Fm~AlF16l6uZ5V4XhQBsxATheGebxGs114~Ex9KQyJupFZQgJNjp7To-FRszsxkrawvY51UeanXHFkIKrjeJeXl-zCZswQYP5OGt~EsxUKJ6L~ptLb8h0Ap7BbJYCS9nWWNpcpCKHxt02qG6P~BApa9fRWXfoPQ7viffnRp1r4o72853ZbrxuA55vLvkuS0BmMItXFiSbhdutA3AA5D0p6balQjVmOuQ6a7isgh8n1dU52gXA5VLqR9Ee61nEEL1ERo0TnNiupeulg__)
-
-*** user aggregation for the customer cube
-
-reverse etl - is a lower priority use case from an embedded dashboard that pulls across 
-
-- aggregation in bigquery and then push back to clickup
-
+![ETL Flow Diagram](assets/diagrams/etl-pipeline.png)
 
 
 ### 6.2 Entity Relationship Diagram (ERD)
@@ -306,15 +379,103 @@ The following artifacts constitute the complete definition of done for this init
 | Airbyte Pipeline Validation | All five API sources confirmed syncing daily with >95% ID match | 2 | Engineering |
 | QuickBooks ID Remediation | Match rate ≥ 95% | 2 | Austin |
 | Finance Dashboard (Looker) | ARR bridge, SaaS metrics, churn detail | 3 | Austin / Tanner |
-| CS Dashboard (Looker) | Health scores, adoption, invoice visibility | 3 | Austin / CS Team |
+| Flow Shift Engagement Dashboard | Historical open vs. filled shifts by facility; fill rate trend from activation date | 3 | Austin / CS Team |
+| Labor Metrics Dashboard (Flow + View + PBJ) | Agency hours, overtime %, pre/post adoption comparison per facility | 3 | Austin / CS Team |
+| Billing Audit Report | QuickBooks invoiced amount vs. ClickUp billing property; discrepancy flags by customer | 3 | Austin / CS Team |
+| Corporate QBR Aggregation Dashboard | Network-level OT %, agency hours, and fill rate by corporation with facility drill-down | 3 | Austin / CS Team |
 | Product Dashboard (Looker) | WAU/DAU, feature adoption, penetration | 3 | Austin / Product Team |
-| Sales Dashboard (Looker) | Pipeline, CAC, deal composition | 3 | Austin / Sales Team |
+| Pipeline Generation Dashboard | Pipeline created, deals, meetings, avg deal size, rep quota attainment — by rep/month/quarter | 3 | Austin / Sales Team |
+| Pipeline Management Dashboard | Close rate, ASP, avg sales cycle, pipeline velocity — filterable by rep, period, and time window | 3 | Austin / Sales Team |
+| Walletshare Dashboard | Active facility penetration, win-back/no-start/stalled/untapped opportunities, product mix by corporation | 3 | Austin / Sales Team |
 | New Customer ID Workflow | Automated CovrID propagation on Closed Won | 4 | Engineering |
 | Data Governance Documentation | Field definitions, refresh schedules, ownership | 4 | Austin |
 
 ---
 
-## 9. Risks & Mitigation
+## 9. Implementation Phases & POC Prioritization
+
+### 9.1 Phase Overview
+
+| Phase | Focus | Status | Target |
+| --- | --- | --- | --- |
+| **Phase 0 — Foundation** | Requirements, ETL/ERD design, Sales BI dashboards | Complete | Q1 2026 |
+| **Phase 1 — POC** | Two cross-functional proof-of-concept dashboards requiring CovrDB integration | In scope | Q2 2026 |
+| **Phase 2 — Department Dashboards** | Full CS, Finance, and Product dashboards; remaining Sales coverage | Planned | Q3 2026 |
+| **Phase 3 — Governance & Automation** | CovrID propagation workflow, QuickBooks remediation, data quality monitoring | Planned | Q3–Q4 2026 |
+
+### 9.2 Phase 0 — Foundation (Complete)
+
+The following deliverables are complete as of Q1 2026 and serve as the baseline for all future phases:
+
+- **Department Requirements Matrix** — this document
+- **ETL pipeline and ERD diagrams** — documented in Sections 6.1 and 6.2
+- **BigQuery views live:** `pipeline_generation_view`, `pipeline_metrics_view`, `corp_penetration_view`
+- **Sales BI dashboards live:** Pipeline Generation, Pipeline Management, and Walletshare — all sourcing from HubSpot + Definitive Healthcare via BigQuery
+
+These dashboards validate the end-to-end pipeline (HubSpot → Airbyte → BigQuery → Next.js) and serve as the architectural template for all subsequent builds.
+
+---
+
+### 9.3 Phase 1 — Proof of Concept (Target: Q2 2026)
+
+The POC phase focuses on the **two reports most likely to demonstrate cross-system value quickly** — meaning each report draws from multiple data sources, answers a real question that cannot currently be answered anywhere in Covr's tooling, and serves more than one department audience.
+
+Both POC reports require integrating **CovrDB** (the Covr product database) into BigQuery for the first time. That schema mapping work is the critical prerequisite for the entire CS and Product dashboard roadmap, making these POCs the highest-leverage engineering investment in Phase 1.
+
+---
+
+#### POC Report 1 — Billing Audit Report
+**"Are customers being invoiced the right amount for the products they're subscribed to?"**
+
+This report compares what QuickBooks is billing each customer against the monthly billing amount and product subscription recorded in ClickUp. It is the strongest starting POC because both data sources are already syncing daily into BigQuery — no new schema mapping or CovrDB integration is required. Discrepancies surface either overcharges (CS relationship risk) or undercharges (revenue leakage), making the output immediately actionable for both CS and Finance.
+
+| Dimension | Detail |
+| --- | --- |
+| **Primary audience** | Customer Success (billing accuracy, relationship risk), Finance (revenue leakage) |
+| **Data sources** | ClickUp (monthly billing amount custom field, subscribed products) · QuickBooks (invoiced amounts via `Quickbooks_Airbyte`) |
+| **Key metrics** | ClickUp billing amount, QuickBooks most-recent invoice amount, delta (over/under), subscribed products, discrepancy flag |
+| **Why this first** | Both sources are already in BigQuery — no new pipeline work required; join logic is documented (name-based matching yields ~658 records immediately); serves CS + Finance in one report; fastest path from zero to a working cross-system view |
+| **Engineering prerequisite** | Confirm ClickUp billing amount custom field name in `ClickUp_AirbyteCustom.task`; confirm QuickBooks invoice table structure in `Quickbooks_Airbyte`; rebuild `company_join_keys` with name-based matching (Section 7.1 interim solution) |
+
+**Join strategy:** Use exact name match between `ClickUp_AirbyteCustom.task.name` and `Quickbooks_Airbyte.customers.CompanyName` as the interim join key, following the approach documented in Section 7.1. This yields ~658 matched active/onboarding records — sufficient to validate the report and surface real discrepancies. When `covr_id` is populated in QuickBooks (long-term solution), match rate climbs to ≥90% automatically.
+
+---
+
+#### POC Report 2 — Corporation-Level Performance Dashboard
+**"How is this corporate account performing across its entire facility network?"**
+
+This report extends the existing Walletshare dashboard (Sales-facing penetration data) with CovrDB labor metrics — overtime and agency hours — to produce a single corporation-level view usable by Sales, Customer Success, and executive leadership in one report.
+
+| Dimension | Detail |
+| --- | --- |
+| **Primary audience** | Customer Success (QBR prep), Sales (account health), Executive (portfolio view) |
+| **Data sources** | ClickUp (corporation/facility structure) · Definitive Healthcare (market size) · CovrDB (shift, OT, agency data) |
+| **Key metrics** | Active facilities, walletshare %, aggregate OT %, aggregate agency hours, network fill rate, facility-level drill-down |
+| **Why this second** | Walletshare SQL view is already built — this POC adds CovrDB as a second dimension rather than starting from scratch; serves three audiences in one build; answers the QBR preparation use case with no current workaround |
+| **Engineering prerequisite** | CovrDB schema mapping + BigQuery view connecting CovrDB facility records to ClickUp task IDs |
+
+---
+
+### 9.4 Phase 2 — Full Department Dashboards (Target: Q3 2026)
+
+With CovrDB integrated and the POC reports validated, Phase 2 builds out the remaining CS, Finance, and Product dashboards against the documented must-haves in Section 5. Scope is locked to the deliverables listed in Section 8 — new requests enter a backlog.
+
+**Phase 2 build order (suggested):**
+1. Labor Metrics Dashboard (Flow + View + PBJ) — extends CovrDB work from POC
+2. Billing Audit Report — depends on QuickBooks identity resolution reaching ≥90% match rate
+3. Finance dashboards (ARR bridge, SaaS metrics) — depends on QuickBooks integration
+4. Product dashboards (feature adoption, WAU/DAU)
+
+### 9.5 Phase 3 — Governance & Automation (Target: Q3–Q4 2026)
+
+- CovrID propagation workflow on Closed Won (Section 7.2)
+- QuickBooks custom field setup and identity remediation to ≥95% (Section 7.1)
+- Data quality monitoring dashboard
+- Field-level documentation and refresh schedule ownership
+
+---
+
+## 10. Risks & Mitigation
 
 | Risk | Likelihood | Impact | Mitigation |
 | --- | --- | --- | --- |
@@ -327,9 +488,9 @@ The following artifacts constitute the complete definition of done for this init
 
 ---
 
-## 10. Platform Costs & Open Architecture Questions
+## 11. Platform Costs & Open Architecture Questions
 
-### 10.1 Current Platform Costs (as of March 2026)
+### 11.1 Current Platform Costs (as of March 2026)
 
 | Component | Cost Basis | Current Monthly Cost |
 | --- | --- | --- |
@@ -369,7 +530,7 @@ Credit usage in November was 45% higher than the Jan–Feb baseline, likely refl
 
 ---
 
-### 10.2 Looker Pricing & Licensing Options
+### 11.2 Looker Pricing & Licensing Options
 
 This section outlines the cost structure for **Google Looker (Google Cloud core)** — the platform specified in this proposal — and compares it to alternatives.
 
@@ -439,7 +600,7 @@ Given the scale of Covr's BI needs (4 departments, ad-hoc analysis, natural lang
 
 ---
 
-### 10.3 Open Architecture Questions for Technical Review
+### 11.3 Open Architecture Questions for Technical Review
 
 The following questions need answers from Engineering (Jeff / Jim) before Phase 2 schema build begins. They are cost, scale, and correctness decisions that affect the design of the transformation layer.
 
@@ -473,17 +634,9 @@ The following questions need answers from Engineering (Jeff / Jim) before Phase 
 
 ---
 
-## 11. Reporting Cadence & Governance
-
-Austin will post a weekly progress update to the `#proj_data_warehouse` Slack channel covering: work completed, blockers, decisions made, and upcoming milestones. All project artifacts, notes, and findings will be maintained in ClickUp at the [project task](https://app.clickup.com/t/86aedfa1n) and linked Google Docs.
-
-A steering review with the CEO, COO, and department leads will be scheduled at the close of each phase to confirm scope, review deliverables, and approve progression to the next phase.
-
----
-
 ## Appendix A — ETL Pipeline Diagram (Full Detail)
 
-![ETL Flow Diagram](https://private-us-east-1.manuscdn.com/sessionFile/OqPOo1zq2ZhayriBXl37wA/sandbox/jHnLbO5gqBmKSVlPS7Bxxu-images_1772209171569_na1fn_L2hvbWUvdWJ1bnR1L2V0bA.png?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvT3FQT28xenEyWmhheXJpQlhsMzd3QS9zYW5kYm94L2pIbkxiTzVncUJtS1NWbFBTN0J4eHUtaW1hZ2VzXzE3NzIyMDkxNzE1NjlfbmExZm5fTDJodmJXVXZkV0oxYm5SMUwyVjBiQS5wbmciLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTg3NjE2MDB9fX1dfQ__&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=MwUGqAsRRFL-NShMZ02vqaEvxOgakYn4w5PVtdP6QRGJaLDoxaAZvYG7HrGfrJL~6uKZ8Sy5Fm~AlF16l6uZ5V4XhQBsxATheGebxGs114~Ex9KQyJupFZQgJNjp7To-FRszsxkrawvY51UeanXHFkIKrjeJeXl-zCZswQYP5OGt~EsxUKJ6L~ptLb8h0Ap7BbJYCS9nWWNpcpCKHxt02qG6P~BApa9fRWXfoPQ7viffnRp1r4o72853ZbrxuA55vLvkuS0BmMItXFiSbhdutA3AA5D0p6balQjVmOuQ6a7isgh8n1dU52gXA5VLqR9Ee61nEEL1ERo0TnNiupeulg__)
+![ETL Flow Diagram](assets/diagrams/etl-pipeline.png)
 
 ---
 
@@ -580,5 +733,5 @@ The `custom_fields` column is a JSON array. Keys currently extracted in SQL:
 
 This diagram illustrates the automated workflow that fires when a deal reaches **Closed Won** status in HubSpot. The workflow writes the `CovrID` back to ClickUp at the company, corporation, and contact levels via API, then propagates those identifiers downstream to Intercom and PostHog. The next daily Airbyte sync carries the updated values into BigQuery, ensuring the Customer Cube record is fully resolved within 24 hours.
 
-![New Customer ID Propagation Workflow](https://private-us-east-1.manuscdn.com/sessionFile/OqPOo1zq2ZhayriBXl37wA/sandbox/jHnLbO5gqBmKSVlPS7Bxxu-images_1772209171569_na1fn_L2hvbWUvdWJ1bnR1L2lkX3Byb3BhZ2F0aW9u.png?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvT3FQT28xenEyWmhheXJpQlhsMzd3QS9zYW5kYm94L2pIbkxiTzVncUJtS1NWbFBTN0J4eHUtaW1hZ2VzXzE3NzIyMDkxNzE1NjlfbmExZm5fTDJodmJXVXZkV0oxYm5SMUwybGtYM0J5YjNCaFoyRjBhVzl1LnBuZyIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5ODc2MTYwMH19fV19&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=orh5xKcXNC8y2gYpYyG4XRZEqON-ZFyBvIrV0zqR7rELWNihnpTEwQ0aXq3azRwgCoA1~NTKLiYKSKwLt-H2HQerjVYXYysi0CjEYkblAEbjbzAEJhS7TJXWIhfwvqK~ExzQGUH5G5zV1e55ekiML-cGnmkqqzpj79xc0jy~pHSvkpC5mCE5LclZ5XiJZgBpjdHZlwo7jS29HpR9EZml~5SKQSQCkLQMHQPQRWnEjlH6~6cJsF2sndO4jT3jZgYgA89ISGU3M-wefwauDH9HjYEIDV40MjrK5PS8rEyIfgAmyz8YuopXpQljQkklxeMyk-wsx0AdKBS9ZmHggX4jxA__)
+![New Customer ID Propagation Workflow](assets/diagrams/covr-id-propagation.png)
 
