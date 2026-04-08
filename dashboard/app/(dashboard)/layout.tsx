@@ -1,8 +1,14 @@
+import type { Metadata } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import Sidebar from '@/components/Sidebar';
 import DashboardHeader from '@/components/DashboardHeader';
+
+export const metadata: Metadata = {
+  title: 'Dashboard',
+  description: 'Covr RevOps analytics and business intelligence dashboards',
+};
 
 export default async function DashboardLayout({
   children,

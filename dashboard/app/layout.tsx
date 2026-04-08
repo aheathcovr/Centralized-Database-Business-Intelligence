@@ -19,8 +19,18 @@ const nunitoSans = Nunito_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Covr Penetration Dashboard',
+  title: {
+    default: 'Covr BI Dashboard',
+    template: '%s | Covr BI Dashboard',
+  },
   description: 'Business Intelligence Dashboard for Covr Leadership',
+  keywords: ['Covr', 'BI', 'dashboard', 'RevOps', 'sales', 'analytics'],
+  openGraph: {
+    title: 'Covr BI Dashboard',
+    description: 'Business Intelligence Dashboard for Covr Leadership',
+    siteName: 'Covr',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
@@ -31,7 +41,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${heptaSlab.variable} ${nunitoSans.variable}`}>
       <body className="font-sans antialiased">
-        <Providers>{children}</Providers>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:rounded-lg focus:text-white"
+          style={{ backgroundColor: 'var(--accent)' }}
+        >
+          Skip to main content
+        </a>
+        <Providers>
+          <main id="main-content">{children}</main>
+        </Providers>
       </body>
     </html>
   );
