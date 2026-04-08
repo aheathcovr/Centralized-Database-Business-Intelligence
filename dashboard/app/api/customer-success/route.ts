@@ -10,7 +10,7 @@ import {
 } from '@/lib/bigquery';
 import { authOptions } from '@/lib/auth';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic'; // uses headers() for auth — must be dynamic
 
 export async function GET() {
   try {

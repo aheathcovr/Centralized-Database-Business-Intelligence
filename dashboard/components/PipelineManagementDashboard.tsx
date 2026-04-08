@@ -49,7 +49,7 @@ const GROUP_MODES: { value: GroupMode; label: string }[] = [
   { value: 'by_create_quarter', label: 'By Create Quarter' },
 ];
 
-const DEFAULT_SELECTED_REPS = ['Charles', 'Logan', 'Bradi'];
+const DEFAULT_SELECTED_REPS = ['Charles Christy', 'Logan Lee', 'Bradi Kelley'];
 
 const CHART_COLORS = ['#1570B6', '#26A2DC', '#3B7E6B', '#A67FB9', '#F47C44', '#F47C44'];
 
@@ -75,23 +75,18 @@ export default function PipelineManagementDashboard() {
   const availableReps = useMemo(() => {
     // API returns only data for the selected trailing_window and group_mode,
     // so when groupMode is 'by_rep', allData already contains rep data
+    const allowedReps = ['Logan Lee', 'Bradi Kelley', 'Charles Christy'];
     const repRows = allData.filter((row) => row.group_mode === 'by_rep');
-    return repRows.map((row) => row.display_name).sort();
+    return repRows
+      .map((row) => row.display_name)
+      .filter(rep => allowedReps.includes(rep))
+      .sort();
   }, [allData]);
 
   const [repsInitialized, setRepsInitialized] = useState(false);
   useEffect(() => {
     if (!repsInitialized && availableReps.length > 0) {
-      const matched = availableReps.filter((rep) =>
-        DEFAULT_SELECTED_REPS.some((defaultRep) =>
-          rep.toLowerCase().includes(defaultRep.toLowerCase())
-        )
-      );
-      if (matched.length > 0) {
-        setSelectedReps(matched);
-      } else {
-        setSelectedReps(availableReps);
-      }
+      setSelectedReps(availableReps);
       setRepsInitialized(true);
     }
   }, [availableReps, repsInitialized]);
@@ -452,8 +447,8 @@ export default function PipelineManagementDashboard() {
             </thead>
             <tbody>
               {sortedData.length > 0 ? (
-                sortedData.map((row) => (
-                  <tr key={row.group_key + '_' + row.trailing_window}>
+                sortedData.map((row, index) => (
+                  <tr key={`row-${index}-${row.group_key || 'unknown'}-${row.trailing_window}`}>
                     <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
                       {row.display_name}
                     </td>

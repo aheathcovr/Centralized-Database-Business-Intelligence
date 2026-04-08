@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { getInMonthConversion } from '@/lib/bigquery';
 import { authOptions } from '@/lib/auth';
 
-export const revalidate = 3600; // re-fetch from BigQuery at most once per hour
+export const dynamic = 'force-dynamic'; // uses headers() for auth — must be dynamic
 
 export async function GET(request: Request) {
   try {

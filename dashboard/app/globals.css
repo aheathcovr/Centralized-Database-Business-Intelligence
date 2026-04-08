@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Hepta+Slab:wght@300;400;500;600;700&family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Hepta+Slab:wght@300;400;500;600;700&family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap');
 
 /* DESIGN SYSTEM — COVR Brand Guidelines */
 
@@ -72,8 +72,8 @@
   --text-primary-dark: #E8EAF0;
   --text-secondary-dark: #9CA3AF;
   --text-muted-dark: #6B7280;
-  --border-subtle-dark: rgba(255, 255, 255, 0.06);
-  --border-default-dark: rgba(255, 255, 255, 0.12);
+  --border-subtle-dark: rgba(255, 255, 0.06);
+  --border-default-dark: rgba(255, 255, 0.12);
   --border-accent-dark: rgba(38, 162, 220, 0.4);
   --accent-glow-dark: rgba(38, 162, 220, 0.15);
   --accent-glow-strong-dark: rgba(38, 162, 220, 0.3);
@@ -212,7 +212,7 @@ body > * {
     @apply fixed left-0 top-0 h-full z-30 flex flex-col;
     width: var(--sidebar-width);
     background: var(--color-navy-primary);
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-right: 1px solid rgba(255, 255, 0.08);
     box-shadow: 4px 0 24px rgba(40, 50, 66, 0.15);
   }
 
@@ -239,8 +239,8 @@ body > * {
 
   .nav-item-inactive:hover {
     color: #FFFFFF;
-    background: rgba(255, 255, 255, 0.06);
-    border-left-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 0.06);
+    border-left-color: rgba(255, 255, 0.15);
   }
 
 
@@ -271,4 +271,6 @@ body > * {
 }
 
 .dashboard-table {
-  width: 100
+  width: 100%;
+  border-collapse: collapse;
+}

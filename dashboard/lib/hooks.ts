@@ -30,7 +30,7 @@ export function useQuery<T>(
     } finally {
       setLoading(false)
     }
-  }, [fetcher, options])
+  }, [fetcher, options?.onSuccess, options?.onError])
 
   useEffect(() => {
     if (options?.enabled !== false) {
