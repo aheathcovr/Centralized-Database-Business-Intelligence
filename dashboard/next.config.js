@@ -15,6 +15,7 @@ const cspHeader = `
 `;
 
 const nextConfig = {
+  serverExternalPackages: ['@google-cloud/bigquery'],
   images: {
     remotePatterns: [
       {
