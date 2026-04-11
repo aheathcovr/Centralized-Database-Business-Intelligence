@@ -48,6 +48,7 @@ export async function GET(request: Request) {
       stalled_facilities,
       untapped_dh_only_facilities,
       total_opportunity_facilities,
+      task_created_timestamp,
       _loaded_at
     FROM \`gen-lang-client-0844868008.revops_analytics.corp_penetration_view\`
     ${whereClause}
