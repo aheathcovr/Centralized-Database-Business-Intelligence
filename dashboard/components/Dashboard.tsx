@@ -496,7 +496,11 @@ export default function Dashboard() {
                   <LabelList
                     dataKey="penetration"
                     position="top"
-                    formatter={(v: number) => `${v}%`}
+                    content={({ value }) => {
+                      const v = Number(value);
+                      if (Number.isNaN(v)) return null;
+                      return <text>{`${v}%`}</text>;
+                    }}
                     style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 13, fill: '#696F7B', fontWeight: 600 }}
                   />
                 </Bar>

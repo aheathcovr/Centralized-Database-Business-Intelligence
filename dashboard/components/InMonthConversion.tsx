@@ -785,7 +785,11 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                     <LabelList
                       dataKey="conversion"
                       position="top"
-                      formatter={(v: number | null) => (v != null ? `${v}%` : '')}
+                      content={({ value }) => {
+                        const v = Number(value);
+                        if (Number.isNaN(v)) return null;
+                        return <text>{`${v}%`}</text>;
+                      }}
                       style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 11, fill: '#696F7B' }}
                     />
                   </Bar>

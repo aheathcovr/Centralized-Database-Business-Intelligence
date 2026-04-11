@@ -1,5 +1,6 @@
 'use client';
 
+
 import {
   BarChart,
   Bar,
@@ -38,7 +39,6 @@ function formatCurrency(value: number, currency: string = '$'): string {
   }
   return `${currency}${value.toFixed(0)}`;
 }
-
 function WaterfallTooltip({ active, payload, currency }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload as WaterfallDataItem;
@@ -69,7 +69,6 @@ export default function WaterfallChart({
   description,
   formatValue: customFormatter,
 }: WaterfallChartProps) {
-  // Pre-calculate chart data with explicit y and y0 for floating bars
   const chartData = data.reduce<Array<{
     label: string;
     value: number;
@@ -97,8 +96,10 @@ export default function WaterfallChart({
     }
     return acc;
   }, []);
-
   const totalValue = data.reduce((sum, item) => sum + item.value, 0);
+
+
+
 
   return (
     <div>
@@ -136,11 +137,25 @@ export default function WaterfallChart({
             <LabelList
               dataKey="value"
               position="top"
-              formatter={(v: number) => {
+              content={({ x, y, width, value }) => {
+                const xNum = Number(x);
+                const yNum = Number(y);
+                const wNum = Number(width);
+                if (!xNum || !yNum || !wNum || wNum < 30) return null;
+                const labelValue = Number(value);
+                if (Number.isNaN(labelValue)) return null;
                 const fn = customFormatter ?? formatCurrency;
-                return fn(v, currency);
+                return (
+                  <text
+                    x={xNum + wNum / 2}
+                    y={yNum - 5}
+                    textAnchor="middle"
+                    style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }}
+                  >
+                    {fn(labelValue, currency)}
+                  </text>
+                );
               }}
-              style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }}
             />
           </Bar>
           <ReferenceLine
@@ -148,7 +163,6 @@ export default function WaterfallChart({
             stroke="rgba(148,163,184,0.3)"
             strokeDasharray="2 2"
           />
-          {/* Net total annotation */}
           {totalValue !== 0 && (
             <ReferenceLine
               y={totalValue}
@@ -160,7 +174,6 @@ export default function WaterfallChart({
           )}
         </BarChart>
       </ResponsiveContainer>
-      {/* Legend */}
       <div className="flex gap-4 mt-3 justify-center">
         <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
           <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#10b981', opacity: 0.85 }} />

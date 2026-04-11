@@ -1,5 +1,6 @@
 'use client';
 
+
 import {
   BarChart,
   Bar,
@@ -19,6 +20,7 @@ export interface FunnelStage {
   color?: string;
 }
 
+
 interface FunnelChartProps {
   data: FunnelStage[];
   height?: number;
@@ -29,6 +31,7 @@ interface FunnelChartProps {
 }
 
 const DEFAULT_COLORS = ['#22d3ee', '#0891b2', '#059669', '#10b981', '#84cc16', '#8b5cf6', '#6366f1', '#f59e0b'];
+
 
 function formatDefault(value: number): string {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
@@ -88,6 +91,7 @@ export default function FunnelChart({
     conversionFromTop: firstValue > 0 ? (stage.value / firstValue) * 100 : 0,
   }));
 
+
   return (
     <div>
       {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
@@ -115,11 +119,26 @@ export default function FunnelChart({
               <LabelList
                 dataKey="conversionFromPrevious"
                 position="right"
-                formatter={(v: number) => {
-                  if (isNaN(v) || v === Infinity) return '';
-                  return `${v.toFixed(0)}%`;
+                content={({ x, y, width, height: barHeight, value }) => {
+                  const xNum = Number(x);
+                  const yNum = Number(y);
+                  const wNum = Number(width);
+                  const hNum = Number(barHeight) || 0;
+                  if (!xNum || !yNum || !wNum) return null;
+                  const labelValue = Number(value);
+                  if (Number.isNaN(labelValue) || labelValue === Infinity) return null;
+                  return (
+                    <text
+                      x={xNum + wNum + 5}
+                      y={yNum + hNum / 2}
+                      dy={4}
+                      textAnchor="start"
+                      style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }}
+                    >
+                      {`${labelValue.toFixed(0)}%`}
+                    </text>
+                  );
                 }}
-                style={{ fontFamily: 'var(--font-fira-code)', fontSize: 10, fill: '#94a3b8' }}
               />
             )}
           </Bar>
