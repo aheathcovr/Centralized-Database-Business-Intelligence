@@ -35,62 +35,51 @@ export default tseslint.config(
   // TypeScript files
   ...tseslint.configs.recommended,
   
-  // React hooks plugin
+  // Import plugin - use flat configs for ESLint 10 compatibility
   {
-    plugins: {
-      'react-hooks': reactHooksPlugin,
-    },
-    rules: {
-      ...reactHooksPlugin.configs.recommended.rules,
-    },
-    files: ['**/*.{ts,tsx}'],
-  },
-  
-  // JSX a11y plugin
-  {
-    plugins: {
-      'jsx-a11y': jsxA11yPlugin,
-    },
-    rules: {
-      ...jsxA11yPlugin.configs.recommended.rules,
-    },
-    files: ['**/*.{ts,tsx}'],
-  },
-  
-  // Import plugin
-  {
-    plugins: {
-      import: importPlugin,
-    },
+    files: ['**/*.{js,mjs,cjs,jsx,ts,tsx}'],
+    ...importPlugin.flatConfigs.recommended,
     settings: {
       'import/resolver': {
         typescript: {},
       },
     },
-    rules: {
-      ...importPlugin.configs.recommended.rules,
-      'import/no-anonymous-default-export': 'warn',
-    },
   },
   
-  // React plugin
+  // Import plugin - TypeScript specific rules
   {
-    plugins: {
-      react: reactPlugin,
-    },
+    files: ['**/*.{ts,tsx}'],
+    ...importPlugin.flatConfigs.typescript,
+  },
+  
+  // JSX a11y plugin - use flat configs for ESLint 10 compatibility
+  {
+    files: ['**/*.{jsx,tsx}'],
+    ...jsxA11yPlugin.flatConfigs.recommended,
+  },
+  
+  // React hooks plugin - use flat config for ESLint 10 compatibility
+  {
+    ...reactHooksPlugin.configs.flat.recommended,
+    files: ['**/*.{ts,tsx}'],
+  },
+  
+  // React plugin - use flat configs for ESLint 10 compatibility
+  {
+    files: ['**/*.{js,jsx,ts,tsx,mjs,mts,cts}'],
+    ...reactPlugin.configs.flat.recommended,
     settings: {
       react: {
         version: '19.2.4',
       },
     },
     rules: {
-      ...reactPlugin.configs.recommended.rules,
+      ...reactPlugin.configs.flat.recommended.rules,
       'react/no-unknown-property': 'off',
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
       'react/jsx-no-target-blank': 'off',
     },
-    files: ['**/*.{js,jsx,ts,tsx,mjs}'],
   },
   
   // Base configuration for all files
@@ -103,6 +92,5 @@ export default tseslint.config(
         ...globals.node,
       },
     },
-    files: ['**/*.{js,jsx,ts,tsx,mjs,mts,cts}'],
   },
 );
