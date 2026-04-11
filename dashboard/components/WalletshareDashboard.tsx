@@ -54,6 +54,17 @@ function groupByCustomerType(data: WalletshareData[]) {
     .map(([name, value]) => ({ name, value }));
 }
 
+function groupByCompanyCount(data: WalletshareData[]) {
+  const counts: Record<string, number> = {};
+  data.forEach((d) => {
+    const label = d.customer_type_label || 'Unknown';
+    counts[label] = (counts[label] || 0) + d.total_facilities;
+  });
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value]) => ({ name, value }));
+}
+
 function formatMonthKey(ts: string) {
   const date = new Date(ts);
   const year = date.getFullYear();
@@ -88,7 +99,7 @@ function buildMonthlyData(data: WalletshareData[]) {
   return { rows, customerTypes };
 }
 
-function DonutChart({ data }: { data: { name: string; value: number }[] }) {
+function DonutChart({ data, unit = 'Corporations' }: { data: { name: string; value: number }[]; unit?: string }) {
   const total = data.reduce((s, d) => s + d.value, 0);
 
   const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: {
@@ -126,7 +137,7 @@ function DonutChart({ data }: { data: { name: string; value: number }[] }) {
                 <Cell key={i} fill={CUSTOMER_TYPE_COLORS[entry.name] || '#9CA3AF'} />
               ))}
             </Pie>
-            <Tooltip formatter={(v: number) => [`${v}`, 'Corporations']} />
+            <Tooltip formatter={(v: number) => [`${v}`, unit]} />
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -200,6 +211,7 @@ export default function WalletshareDashboard() {
   const implCorps = data.filter((d) => d.task_status_label === 'Implementation');
 
   const activeDonutData = groupByCustomerType(activeCorps);
+  const activeCompanyDonutData = groupByCompanyCount(activeCorps);
   const implDonutData = groupByCustomerType(implCorps);
 
   const { rows: monthlyRows, customerTypes } = buildMonthlyData(data);
@@ -262,19 +274,26 @@ export default function WalletshareDashboard() {
       </div>
 
       {/* Donut Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <ChartCard
           title="Active Corporations by Customer Type"
           description={`${activeCorps.length} corporations with status = Active`}
         >
-          <DonutChart data={activeDonutData} />
+          <DonutChart data={activeDonutData} unit="Corporations" />
+        </ChartCard>
+
+        <ChartCard
+          title="Active Companies by Customer Type"
+          description={`${activeCorps.reduce((s, d) => s + d.total_facilities, 0).toLocaleString()} companies across active corporations`}
+        >
+          <DonutChart data={activeCompanyDonutData} unit="Companies" />
         </ChartCard>
 
         <ChartCard
           title="Implementation Corporations by Customer Type"
           description={`${implCorps.length} corporations with status = Implementation`}
         >
-          <DonutChart data={implDonutData} />
+          <DonutChart data={implDonutData} unit="Corporations" />
         </ChartCard>
       </div>
 
