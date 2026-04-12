@@ -1,0 +1,16 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - main [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e8]: C
+        - heading "Covr Penetration Dashboard" [level=1] [ref=e9]
+        - paragraph [ref=e10]: Sign in with your Covr Google account
+      - button "Sign in with Google" [ref=e11]:
+        - img [ref=e12]
+        - text: Sign in with Google
+      - paragraph [ref=e17]: Only @covr.care email addresses are allowed
+  - button "Open Next.js Dev Tools" [ref=e23] [cursor=pointer]:
+    - img [ref=e24]
+  - alert [ref=e27]
