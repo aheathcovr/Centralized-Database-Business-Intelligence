@@ -121,6 +121,10 @@ The CS team currently has no way to view shift data historically — they can on
 | Filled Shifts | Count of shifts claimed or filled by facility employees, by facility and time period | CovrDB |
 | Fill Rate % | Filled shifts ÷ open shifts created — primary engagement signal | CovrDB |
 | Historical Shift Trend | Weekly or monthly trend of open vs. filled shifts per facility, going back to activation date | CovrDB |
+- absence count - using schedule
+- open shifts is using schedule & posting shifts
+- messaging is just messaging
+- 
 
 **Business use case:** Identify facilities with low fill rates (employee-side disengagement) vs. facilities not creating shifts (scheduler-side disengagement) — two distinct intervention paths for the CS team.
 

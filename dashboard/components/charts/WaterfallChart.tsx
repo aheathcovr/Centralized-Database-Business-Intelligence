@@ -85,7 +85,7 @@ export default function WaterfallChart({
         y: item.value,
       });
     } else {
-      const previousCumulative = acc.reduce((sum, d) => sum + d.value, 0);
+      const previousCumulative = acc.reduce((sum, d) => sum + (d.type === 'start' || d.type === 'end' ? 0 : d.value), 0);
       acc.push({
         label: item.label,
         value: item.value,

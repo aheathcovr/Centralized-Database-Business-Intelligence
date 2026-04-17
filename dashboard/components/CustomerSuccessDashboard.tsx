@@ -219,7 +219,7 @@ export default function CustomerSuccessDashboard() {
         <div className="card mb-8">
           <h3 className="text-lg font-semibold mb-1">CSAT Score {csView === 'month' ? 'Monthly' : 'Quarterly'}</h3>
           <p className="text-sm mb-4">Customer satisfaction responses stacked by sentiment. Line shows positive-response percentage.</p>
-          <ResponsiveContainer width="100%" height={340}>
+          <ResponsiveContainer width="100%" height={340} role="img" aria-label="CSAT Score trend chart showing monthly satisfaction percentages">
             <ComposedChart data={csatChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis dataKey="label" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} angle={-45} textAnchor="end" height={60} />
@@ -239,16 +239,16 @@ export default function CustomerSuccessDashboard() {
           <h3 className="text-lg font-semibold mb-1">NPS Score {csView === 'month' ? 'Monthly' : 'Quarterly'}</h3>
           <p className="text-sm mb-4">Net Promoter Score breakdown. Promoters (9-10), Passives (7-8), Detractors (0-6).</p>
           {npsChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={340}>
+            <ResponsiveContainer width="100%" height={340} role="img" aria-label="NPS Score trend chart showing monthly Net Promoter Score">
               <ComposedChart data={npsChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
                 <XAxis dataKey="label" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} angle={-45} textAnchor="end" height={60} />
                 <YAxis yAxisId="count" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} allowDecimals={false} />
                 <YAxis yAxisId="pct" orientation="right" domain={[-100, 100]} tickFormatter={v => v + ''} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
-                <Tooltip contentStyle={{ fontFamily: 'var(--font-primary-sans)', fontSize: 13 }} />
+                <Tooltip contentStyle={{ fontFamily: 'var(--font-primary-sans)', fontSize: 13 }} formatter={(value: any, name: string) => { if (name === 'NPS' && value != null) return [value, name]; return [value ?? 'N/A', name]; }} />
                 <Legend formatter={value => <span className="text-sm text-gray-700">{value}</span>} />
                 <Bar dataKey="Promoters" yAxisId="count" stackId="nps" fill="#3B7E6B" />
-                <Bar dataKey="Passives" yAxisId="count" stackId="nps" fill="#F47C44" />
+                <Bar dataKey="Passives" yAxisId="count" stackId="nps" fill="#F4B44C" />
                 <Bar dataKey="Detractors" yAxisId="count" stackId="nps" fill="#F47C44" radius={[2, 2, 0, 0]} />
                 <Line type="monotone" dataKey="Score" yAxisId="pct" name="NPS" stroke="#0d9488" strokeWidth={2} dot={{ r: 3, fill: '#0d9488' }} connectNulls />
               </ComposedChart>
@@ -268,7 +268,7 @@ export default function CustomerSuccessDashboard() {
           <h3 className="text-lg font-semibold mb-1">CSAT by Domain URL</h3>
           <p className="text-sm mb-4">Customer satisfaction scores grouped by the domain URL of the Intercom conversation source.</p>
           {csatDomainChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={Math.max(300, csatDomainChartData.length * 30)}>
+            <ResponsiveContainer width="100%" height={Math.max(300, csatDomainChartData.length * 30)} role="img" aria-label="CSAT by Domain horizontal bar chart">
               <BarChart data={csatDomainChartData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
                 <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
@@ -303,7 +303,7 @@ export default function CustomerSuccessDashboard() {
           {onboardingStatusData.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={200} role="img" aria-label="Onboarding status pie chart">
                   <PieChart>
                     <Pie data={onboardingStatusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={({ name, value }: any) => name + ': ' + value}>
                       {onboardingStatusData.map((entry, index) => (
@@ -377,9 +377,9 @@ export default function CustomerSuccessDashboard() {
               <table className="dashboard-table">
                 <thead>
                   <tr>
-                    <th>Facility</th>
                     <th>Corporation</th>
                     <th>Status</th>
+                    <th>Product</th>
                     <th style={{ textAlign: 'right' }}>Facilities</th>
                     <th>Go-Live</th>
                     <th>HubSpot</th>

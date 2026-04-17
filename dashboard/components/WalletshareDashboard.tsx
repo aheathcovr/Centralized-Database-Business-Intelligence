@@ -41,6 +41,7 @@ const CUSTOMER_TYPE_COLORS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   'Active': '#3B7E6B',
   'Implementation': '#1570B6',
+  'default': '#9CA3AF',
 };
 
 function groupByCustomerType(data: WalletshareData[]) {
@@ -119,9 +120,9 @@ function DonutChart({ data, unit = 'Corporations' }: { data: { name: string; val
   };
 
   return (
-    <div className="flex flex-col items-center">
+    <div role="img" aria-label="Customer status donut chart" className="flex flex-col items-center">
       <div className="relative">
-        <ResponsiveContainer width={240} height={240}>
+        <ResponsiveContainer width="100%" height={240}>
           <PieChart>
             <Pie
               data={data}
@@ -161,25 +162,27 @@ function DonutChart({ data, unit = 'Corporations' }: { data: { name: string; val
 function CrossSellChart({ data }: { data: { name: string; 'Active Facilities': number; Untapped: number; status: string }[] }) {
   const height = Math.max(280, data.length * 32 + 80);
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <BarChart
-        data={data}
-        layout="vertical"
-        margin={{ top: 5, right: 40, left: 180, bottom: 5 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-        <XAxis type="number" tick={{ fontSize: 11 }} label={{ value: 'Facilities', position: 'insideBottomRight', offset: -5, fontSize: 11 }} />
-        <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={175} />
-        <Tooltip />
-        <Legend />
-        <Bar dataKey="Active Facilities" stackId="a" fill="#3B82F6">
-          {data.map((entry, i) => (
-            <Cell key={i} fill={STATUS_COLORS[entry.status] || '#3B82F6'} />
-          ))}
-        </Bar>
-        <Bar dataKey="Untapped" stackId="a" fill="#E5E7EB" />
-      </BarChart>
-    </ResponsiveContainer>
+    <div role="img" aria-label="Cross sell chart showing products by facility status">
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ top: 5, right: 40, left: 180, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+          <XAxis type="number" tick={{ fontSize: 11 }} label={{ value: 'Facilities', position: 'insideBottomRight', offset: -5, fontSize: 11 }} />
+          <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={175} />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="Active Facilities" stackId="a" name="Active Facilities" fill="#3B82F6">
+            {data.map((entry, i) => (
+              <Cell key={i} fill={STATUS_COLORS[entry.status] || STATUS_COLORS['default']} />
+            ))}
+          </Bar>
+          <Bar dataKey="Untapped" stackId="a" name="Untapped" fill="#E5E7EB" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -302,27 +305,33 @@ export default function WalletshareDashboard() {
         title="Corporations Created by Month"
         description="Count of ClickUp corporation tasks by creation date, stacked by customer type"
       >
-        <ResponsiveContainer width="100%" height={350}>
-          <BarChart data={monthlyRows} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="month"
-              angle={-45}
-              textAnchor="end"
-              height={80}
-              tick={{ fontSize: 11 }}
-            />
-            <YAxis
-              allowDecimals={false}
-              label={{ value: 'Count', angle: -90, position: 'insideLeft', offset: 10, fontSize: 12 }}
-            />
-            <Tooltip />
-            <Legend />
-            {customerTypes.map((type) => (
-              <Bar key={type} dataKey={type} stackId="a" fill={CUSTOMER_TYPE_COLORS[type] || '#9CA3AF'} />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
+        {monthlyRows.length === 0 ? (
+          <p className="text-gray-400 text-sm py-8 text-center">No matching corporations</p>
+        ) : (
+          <div role="img" aria-label="Corporations created by month stacked bar chart">
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={monthlyRows} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="month"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  tick={{ fontSize: 11 }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  label={{ value: 'Count', angle: -90, position: 'insideLeft', offset: 10, fontSize: 12 }}
+                />
+                <Tooltip />
+                <Legend />
+                {customerTypes.map((type) => (
+                  <Bar key={type} dataKey={type} name={type} stackId="a" fill={CUSTOMER_TYPE_COLORS[type] || '#9CA3AF'} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </ChartCard>
 
       {/* Cross-sell: Flow → View */}

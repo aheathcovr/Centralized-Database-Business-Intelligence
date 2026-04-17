@@ -64,7 +64,7 @@ export default function InMonthConversionPage() {
         params.set('end_month', dateRange.endDate);
       }
       if (salesRepFilter.reps.length > 0) {
-        // Use the first selected rep ID as deal_owner_id
+        // Note: API currently supports single rep only; uses first selected rep
         params.set('deal_owner_id', salesRepFilter.reps[0]);
       }
 
@@ -190,37 +190,41 @@ export default function InMonthConversionPage() {
         <div className="card">
           <h3 className="text-lg font-semibold mb-1">Monthly Pipeline Outcomes</h3>
           <p className="text-sm mb-4">Won, Lost, and Pushed from expected pipeline</p>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-              <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
-              <YAxis tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="won" name="Won" fill="#3B7E6B" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="lost" name="Lost" fill="#F47C44" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="pushed" name="Pushed" fill="#F47C44" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div role="img" aria-label="Deal conversion bar chart showing won, lost, and pushed deals by month">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
+                <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
+                <YAxis tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="won" name="Won" fill="#3B7E6B" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="lost" name="Lost" fill="#F47C44" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="pushed" name="Pushed" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="card">
           <h3 className="text-lg font-semibold mb-1">Conversion Rate Trend</h3>
           <p className="text-sm mb-4">Month-over-month in-month conversion percentage</p>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-              <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
-              <YAxis
-                domain={[0, 100]}
-                tickFormatter={(v) => `${v}%`}
-                tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
-              />
-              <Tooltip formatter={(value) => [`${value}%`, 'Conversion Rate']} />
-              <ReferenceLine y={50} stroke="#F47C44" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '50% target', position: 'right', fill: '#F47C44', fontSize: 11 }} />
-              <Line type="monotone" dataKey="conversionRate" name="Rate" stroke="#1570B6" strokeWidth={2} dot={{ r: 5 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          <div role="img" aria-label="Win rate trend line chart showing monthly conversion percentage with 50% target reference line">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
+                <XAxis dataKey="month" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
+                <YAxis
+                  domain={[0, 100]}
+                  tickFormatter={(v) => `${v}%`}
+                  tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
+                />
+                <Tooltip formatter={(value) => [`${value}%`, 'Conversion Rate']} />
+                <ReferenceLine y={50} stroke="#F47C44" strokeDasharray="4 4" strokeOpacity="0.6" label={{ value: '50% target', position: 'insideTop', fill: '#F47C44', fontSize: 11 }} />
+                <Line type="monotone" dataKey="conversionRate" name="Rate" stroke="#1570B6" strokeWidth={2} dot={{ r: 5 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 

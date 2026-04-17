@@ -1,63 +1,16 @@
 import { NextResponse } from 'next/server';
-import { BigQuery } from '@google-cloud/bigquery';
-
-const bigquery = new BigQuery({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || 'gen-lang-client-0844868008',
-});
+import { getWalletshare } from '@/lib/bigquery';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const status = searchParams.get('status');
-  const product = searchParams.get('product');
-
-  const whereConditions: string[] = [];
-  const params: Record<string, string | number> = {};
-
-  if (status) {
-    whereConditions.push('task_status_label = @status');
-    params.status = status;
-  }
-
-  if (product) {
-    whereConditions.push('product_mix = @product');
-    params.product = product;
-  }
-
-  const whereClause = whereConditions.length > 0
-    ? 'WHERE ' + whereConditions.join(' AND ')
-    : '';
-
-  const query = `
-    SELECT
-      clickup_task_id,
-      corporation_name,
-      task_status_label,
-      customer_type_label,
-      product_mix,
-      total_facilities,
-      facilities_in_dh,
-      penetration_rate,
-      active_facilities,
-      walletshare_pct,
-      active_flow_only_facilities,
-      active_view_only_facilities,
-      active_flow_and_view_facilities,
-      active_sync_facilities,
-      win_back_facilities,
-      no_start_facilities,
-      stalled_facilities,
-      untapped_dh_only_facilities,
-      total_opportunity_facilities,
-      task_created_timestamp,
-      _loaded_at
-    FROM \`gen-lang-client-0844868008.revops_analytics.corp_penetration_view\`
-    ${whereClause}
-    ORDER BY walletshare_pct DESC
-  `;
+  const status = searchParams.get('status') ?? undefined;
+  const product = searchParams.get('product') ?? undefined;
 
   try {
-    const [rows] = await bigquery.query({ query, params });
-    return NextResponse.json({ data: rows });
+    const data = await getWalletshare({ status, product });
+    return NextResponse.json({ data }, {
+      headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=3600' },
+    });
   } catch (error) {
     console.error('Error fetching walletshare data:', error);
     return NextResponse.json(

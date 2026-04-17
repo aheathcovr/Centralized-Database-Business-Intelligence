@@ -367,22 +367,24 @@ export default function PipelineManagementDashboard() {
             <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
               Win rate and average deal size by {groupMode === 'by_rep' ? 'sales rep' : groupMode === 'by_create_month' ? 'create month' : 'create quarter'}
             </p>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-                <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
-                <YAxis dataKey="name" type="category" width={groupMode === 'by_rep' ? 80 : 100} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
-                <Tooltip
-                  formatter={(value: number, name: string) => [
-                    name === 'closeRate' ? `${value}%` : `$${value.toLocaleString()}`,
-                    name === 'closeRate' ? 'Close Rate' : 'ASP',
-                  ]}
-                />
-                <Legend formatter={(value) => value === 'closeRate' ? 'Close Rate (%)' : 'ASP ($)'} />
-                <Bar dataKey="closeRate" name="closeRate" fill="#1570B6" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="asp" name="asp" fill="#3B7E6B" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div role="img" aria-label="Close rate and average selling price by period bar chart">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
+                  <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={groupMode === 'by_rep' ? 100 : 120} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value: number, name: string) => [
+                      name === 'closeRate' ? `${value}%` : `$${value.toLocaleString()}`,
+                      name === 'closeRate' ? 'Close Rate' : 'ASP',
+                    ]}
+                  />
+                  <Legend formatter={(value) => value === 'closeRate' ? 'Close Rate (%)' : 'ASP ($)'} />
+                  <Bar dataKey="closeRate" name="closeRate" fill="#1570B6" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="asp" name="asp" fill="#3B7E6B" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           <div className="card">
@@ -390,22 +392,24 @@ export default function PipelineManagementDashboard() {
             <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
               Average days to close and pipeline velocity ($/month)
             </p>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-                <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
-                <YAxis dataKey="name" type="category" width={groupMode === 'by_rep' ? 80 : 100} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
-                <Tooltip
-                  formatter={(value: number, name: string) => [
-                    name === 'salesCycle' ? `${value} days` : `$${value.toLocaleString()}`,
-                    name === 'salesCycle' ? 'Avg Sales Cycle' : 'Velocity',
-                  ]}
-                />
-                <Legend formatter={(value) => value === 'salesCycle' ? 'Sales Cycle (days)' : 'Velocity ($/mo)'} />
-                <Bar dataKey="salesCycle" name="salesCycle" fill="#A67FB9" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="velocity" name="velocity" fill="#26A2DC" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div role="img" aria-label="Sales cycle and velocity chart showing days to close by period">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
+                  <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={groupMode === 'by_rep' ? 100 : 120} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value: number, name: string) => [
+                      name === 'salesCycle' ? `${value} days` : `$${value.toLocaleString()}`,
+                      name === 'salesCycle' ? 'Avg Sales Cycle' : 'Velocity',
+                    ]}
+                  />
+                  <Legend formatter={(value) => value === 'salesCycle' ? 'Sales Cycle (days)' : 'Velocity ($/mo)'} />
+                  <Bar dataKey="salesCycle" name="salesCycle" fill="#A67FB9" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="velocity" name="velocity" fill="#26A2DC" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       ) : null}

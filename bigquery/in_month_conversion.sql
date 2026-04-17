@@ -1,65 +1,64 @@
+-- ============================================================
 -- In-Month Conversion View
--- Created: 2026-03-30
 -- Dataset: revops_analytics.in_month_conversion
 -- Source: HubSpot_Airbyte (Airbyte connector) - deals, deals_property_history tables
 --
--- Metric: % Won vs Entering Expected = Won / (Won + Lost + Pushed)
+-- This view provides two perspectives on deal conversion:
+--   1. Start of Month, Looking Forward: Deals expected to close, with outcomes
+--   2. End of Month, Looking Back: Won deals classified by origin at SOM
 --
--- Measures what percentage of deals that entered a month in an expected-to-close
--- pipeline stage actually closed won by month-end, vs were lost or pushed out.
---
--- Three parts:
---   1. Start of Month Pipeline Snapshot (deals_property_history at 23:59:59 prior day)
---   2. End of Month Actuals (Won/Lost/Pushed with origin attribution: Expected, Later Month, Created)
---   3. Final Output Metric (% Won vs Entering Expected) pivotable by month columns
+-- Supports monthly and quarterly period types via @period_type parameter.
 --
 -- Usage:
 --   SELECT * FROM revops_analytics.in_month_conversion
---   -- Pivot by month_label in BI tool: Jun-25, Jul-25, Aug-25, etc.
---   -- Drill by: expected_stage_label, month_number, deal_owner_id
+--   WHERE period_type = 'monthly'  -- or 'quarterly'
+--
+-- Reconciliation Rules:
+--   SOM Section: Won + Lost + Pushed = Expected (per period)
+--   EOM Section: Was Expected + Later Month + Created = Total Won (per period)
+-- ============================================================
 
 CREATE OR REPLACE VIEW `gen-lang-client-0844868008.revops_analytics.in_month_conversion` AS
 
 WITH
 
 -- ============================================================
--- CONFIG: Deal Pipeline Stage Definitions
+-- CONFIG: Period Type Parameter
 -- ============================================================
--- Adjust these to match your HubSpot pipeline configuration.
--- These represent "open" stages where a deal is expected to close
--- in the current month. Stages are ordered by progression.
---
--- Typical HubSpot default stages:
---   appointmentscheduled, qualifiedtobuy, presentationscheduled,
---   decisionmakerboughtin, contractsent, closedwon, closedlost
+-- Controls whether data is grouped by month or quarter.
+-- SOM snapshot logic always uses monthly boundaries for accuracy.
 
-pipeline_stage_config AS (
-  SELECT * FROM UNNEST([
-    STRUCT('appointmentscheduled' AS stage_id, 'Appointment Scheduled' AS stage_label, 1 AS stage_order),
-    STRUCT('qualifiedtobuy', 'Qualified to Buy', 2),
-    STRUCT('presentationscheduled', 'Presentation Scheduled', 3),
-    STRUCT('decisionmakerboughtin', 'Decision Maker Bought In', 4),
-    STRUCT('contractsent', 'Contract Sent', 5),
-    STRUCT('closedwon', 'Closed Won', 6),
-    STRUCT('closedlost', 'Closed Lost', 7)
-  ])
+period_config AS (
+  SELECT
+    CASE @period_type
+      WHEN 'quarterly' THEN 'quarter'
+      ELSE 'month'
+    END AS grouping_type,
+    CASE @period_type
+      WHEN 'quarterly' THEN 3
+      ELSE 1
+    END AS months_per_period
 ),
 
 -- ============================================================
 -- SECTION 1: Month Calendar
 -- ============================================================
--- Generates one row per month from Jan 2024 through current month.
--- Each row has first/last day timestamps at 23:59:59 for snapshot queries.
+-- Generates monthly periods from Jan 2024 through current month.
+-- Each row has first/last day timestamps and snapshot times.
 
 month_calendar AS (
   SELECT
     month_start,
     LAST_DAY(month_start, MONTH) AS month_end,
     -- Snapshot timestamp: 23:59:59 on last day of prior month
-    TIMESTAMP_SUB(TIMESTAMP(month_start), INTERVAL 1 SECOND) AS snapshot_ts,
+    TIMESTAMP_SUB(TIMESTAMP(month_start), INTERVAL 1 SECOND) AS som_snapshot_ts,
+    -- EOM snapshot: 23:59:59 on last day of month
+    TIMESTAMP_ADD(TIMESTAMP(LAST_DAY(month_start, MONTH)), INTERVAL 86399 SECOND) AS eom_snapshot_ts,
     FORMAT_DATE('%b-%y', month_start) AS month_label,
     EXTRACT(YEAR FROM month_start) AS year,
-    EXTRACT(MONTH FROM month_start) AS month_number
+    EXTRACT(MONTH FROM month_start) AS month_number,
+    EXTRACT(QUARTER FROM month_start) AS quarter_number,
+    CONCAT('Q', EXTRACT(QUARTER FROM month_start), '-', FORMAT_DATE('%y', month_start)) AS quarter_label
   FROM UNNEST(
     GENERATE_DATE_ARRAY(
       DATE(2024, 1, 1),
@@ -78,22 +77,20 @@ month_calendar AS (
 --
 -- Uses deals_property_history to get the effective value of 'dealstage'
 -- at that exact point in time by finding the most recent change
--- timestamp <= snapshot_ts.
+-- timestamp <= som_snapshot_ts.
 
 som_snapshot_raw AS (
   SELECT
     mc.month_start,
     mc.month_end,
     mc.month_label,
-    mc.snapshot_ts,
+    mc.som_snapshot_ts,
     dph.dealId AS deal_id,
     dph.value AS stage_at_som,
-    -- Most recent property change before or at snapshot
     dph.timestamp AS stage_set_timestamp,
-    -- Close date: used to determine if deal was "expected" this month
-    DATE(d.properties_closedate) AS properties_closedate,
+    DATE(d.properties_closedate) AS deal_close_date,
     d.properties_hubspot_owner_id AS deal_owner_id,
-    d.properties_amount AS deal_amount,
+    COALESCE(d.properties_amount, 0) AS deal_arr,
     d.properties_pipeline AS deal_pipeline_id
   FROM month_calendar mc
   CROSS JOIN (
@@ -103,7 +100,9 @@ som_snapshot_raw AS (
   ) dph
   JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.deals` d
     ON dph.dealId = d.id
-  WHERE dph.timestamp <= mc.snapshot_ts
+  WHERE dph.timestamp <= mc.som_snapshot_ts
+    -- Exclude deals already in closed states at SOM
+    AND dph.value NOT IN ('closedwon', 'closedlost')
 ),
 
 -- Deduplicate: keep only the latest stage change per deal per month
@@ -113,11 +112,12 @@ som_snapshot AS (
     month_start,
     month_end,
     month_label,
+    som_snapshot_ts,
     stage_at_som,
     stage_set_timestamp,
-    properties_closedate AS deal_close_date,
+    deal_close_date,
     deal_owner_id,
-    deal_amount,
+    deal_arr,
     deal_pipeline_id
   FROM (
     SELECT
@@ -127,45 +127,43 @@ som_snapshot AS (
         ORDER BY stage_set_timestamp DESC
       ) AS rn
     FROM som_snapshot_raw
-    WHERE stage_at_som NOT IN ('closedwon', 'closedlost')
   ) ranked
   WHERE rn = 1
 ),
 
--- Classify Expected vs Later-Month vs Won-Already
+-- ============================================================
+-- SECTION 3: Classify Deals at Start of Month
+-- ============================================================
+-- For each deal entering a month, classify by expected close date:
+--   Expected: close date falls within this month
+--   Later Month: close date is in a future month
+--   Past Close: close date was already passed
+
 deals_entering AS (
   SELECT
-    s.*,
-    sc.stage_label AS som_stage_label,
-    sc.stage_order AS som_stage_order,
+    s.deal_id,
+    s.month_start,
+    s.month_end,
+    s.month_label,
+    s.deal_close_date,
+    s.deal_owner_id,
+    s.deal_arr,
+    s.deal_pipeline_id,
     CASE
-      -- Expected to close this month: close_date in this month
-      WHEN DATE_TRUNC(s.deal_close_date, MONTH) = s.month_start
-        THEN 'Expected'
-      -- Later month: close_date is in a future month (pushed from earlier months)
-      WHEN s.deal_close_date > s.month_end
-        THEN 'Later Month'
-      -- Won already: stage was open but close_date was in the past
-      WHEN s.deal_close_date < s.month_start
-        THEN 'Past Close Date'
-      -- No close date set
-      WHEN s.deal_close_date IS NULL
-        THEN 'No Close Date'
+      WHEN DATE_TRUNC(s.deal_close_date, MONTH) = s.month_start THEN 'Expected'
+      WHEN s.deal_close_date > s.month_end THEN 'Later Month'
+      WHEN s.deal_close_date < s.month_start THEN 'Past Close'
+      WHEN s.deal_close_date IS NULL THEN 'No Close Date'
       ELSE 'Unknown'
     END AS entering_origin
   FROM som_snapshot s
-  LEFT JOIN pipeline_stage_config sc
-    ON s.stage_at_som = sc.stage_id
 ),
 
 -- ============================================================
--- SECTION 3: End of Month Actuals
+-- SECTION 4: End of Month Stage Snapshot
 -- ============================================================
--- For each month, determine what happened to each deal that entered
--- the month in any open stage.
---
--- End-of-month status is determined by the dealstage at 23:59:59
--- on the last day of the month.
+-- For each month, determine the stage each deal was in at EOM.
+-- Used to determine final outcome (Won, Lost, or Pushed).
 
 eom_snapshot_raw AS (
   SELECT
@@ -179,9 +177,10 @@ eom_snapshot_raw AS (
     FROM `gen-lang-client-0844868008.HubSpot_Airbyte.deals_property_history`
     WHERE property = 'dealstage'
   ) dph
-  WHERE dph.timestamp <= TIMESTAMP_ADD(TIMESTAMP(mc.month_end), INTERVAL 86399 SECOND)
+  WHERE dph.timestamp <= mc.eom_snapshot_ts
 ),
 
+-- Deduplicate: keep only the latest stage change per deal per month
 eom_snapshot AS (
   SELECT
     deal_id,
@@ -201,18 +200,10 @@ eom_snapshot AS (
 ),
 
 -- ============================================================
--- SECTION 4: Outcome Classification
+-- SECTION 5: Deal Outcomes
 -- ============================================================
 -- Join entering deals with end-of-month status.
 -- Classify each deal into: Won, Lost, or Pushed.
---
--- Won:  Deals that closedwon during the month (stage changed to
---       closedwon between start and end of month).
--- Lost: Deals that closedlost during the month.
--- Pushed: Deals that remained in an open stage at end of month.
---         Sub-categorize by origin: Expected (should close this month),
---         Later Month (close date is in future), or Created (created
---         during the month).
 
 deal_outcomes AS (
   SELECT
@@ -220,37 +211,18 @@ deal_outcomes AS (
     e.month_start,
     e.month_end,
     e.month_label,
-    e.stage_at_som,
-    e.som_stage_label,
-    e.som_stage_order,
     e.deal_close_date,
     e.deal_owner_id,
-    e.deal_amount,
-    e.deal_pipeline_id,
+    e.deal_arr,
     e.entering_origin,
-    COALESCE(eom.stage_at_eom, 'No End Data') AS stage_at_eom,
-    -- Determine outcome
+    COALESCE(eom.stage_at_eom, 'No Data') AS stage_at_eom,
+    -- Determine outcome based on EOM stage
     CASE
-      -- Won during the month: ended as closedwon and was NOT closedwon at start
-      WHEN eom.stage_at_eom = 'closedwon'
-        AND e.stage_at_som != 'closedwon'
-        THEN 'Won'
-      -- Lost during the month: ended as closedlost and was NOT closedlost at start
-      WHEN eom.stage_at_eom = 'closedlost'
-        AND e.stage_at_som != 'closedlost'
-        THEN 'Lost'
-      -- Pushed: still in open stage at end of month
-      WHEN eom.stage_at_eom NOT IN ('closedwon', 'closedlost')
-        THEN 'Pushed'
-      -- Edge case: stage didn't change (was already in target state)
+      WHEN eom.stage_at_eom = 'closedwon' THEN 'Won'
+      WHEN eom.stage_at_eom = 'closedlost' THEN 'Lost'
+      WHEN eom.stage_at_eom NOT IN ('closedwon', 'closedlost', 'No Data') THEN 'Pushed'
       ELSE 'No Change'
     END AS outcome,
-    -- For Pushed deals, classify the origin sub-type
-    CASE
-      WHEN eom.stage_at_eom NOT IN ('closedwon', 'closedlost')
-        THEN e.entering_origin
-      ELSE NULL
-    END AS pushed_origin,
     eom.eom_stage_set_timestamp
   FROM deals_entering e
   LEFT JOIN eom_snapshot eom
@@ -259,161 +231,377 @@ deal_outcomes AS (
 ),
 
 -- ============================================================
--- SECTION 5: Deals Won That Were NOT in Start-of-Month Snapshot
+-- SECTION 6: Identify Bluebird Deals
 -- ============================================================
--- Deals that closed won this month but were either:
---   (a) Created during the month (never existed at start of month)
---   (b) Were in closedlost at start and reopened
--- These are important for total pipeline context but are NOT part
--- of the core "Expected" denominator.
+-- Bluebirds are deals created AND won during the same period.
+-- They are NOT in the SOM snapshot (didn't exist at start of month)
+-- but were created, progressed, and closed won within the period.
 
-newly_won_deals AS (
+bluebird_deals AS (
   SELECT
     mc.month_start,
     mc.month_label,
     d.id AS deal_id,
-    d.properties_amount AS deal_amount,
-    d.properties_hubspot_owner_id AS deal_owner_id,
-    CASE
-      WHEN DATE(d.properties_createdate) >= mc.month_start
-        THEN 'Created'
-      ELSE 'Reopened'
-    END AS won_origin
+    COALESCE(d.properties_amount, 0) AS deal_arr,
+    d.properties_hubspot_owner_id AS deal_owner_id
   FROM month_calendar mc
   JOIN `gen-lang-client-0844868008.HubSpot_Airbyte.deals` d
     ON DATE(d.properties_closedate) BETWEEN mc.month_start AND mc.month_end
-  WHERE LOWER(d.properties_dealstage) = 'closedwon'
-    -- Exclude deals already tracked in our entering snapshot
-    AND d.id NOT IN (
-      SELECT deal_id FROM deals_entering
-      WHERE month_start = mc.month_start
-    )
+    AND LOWER(d.properties_dealstage) = 'closedwon'
+    AND DATE(d.properties_createdate) >= mc.month_start
+    AND DATE(d.properties_createdate) <= mc.month_end
+  WHERE d.id NOT IN (
+    SELECT deal_id FROM som_snapshot WHERE month_start = mc.month_start
+  )
 ),
 
 -- ============================================================
--- SECTION 6: Monthly Aggregates
+-- SECTION 7: Won Deals from SOM Snapshot
 -- ============================================================
--- Aggregate outcomes by month, focusing on deals that were
--- in Expected closing status at start of month.
+-- Classify deals that WON during each month based on their origin at SOM:
+--   Was Expected: deal was in Expected category at SOM
+--   Was Later Month: deal was expected to close in future month
 
-monthly_aggregates AS (
+won_from_som AS (
+  SELECT
+    o.month_start,
+    o.month_label,
+    o.deal_id,
+    o.deal_arr,
+    o.deal_owner_id,
+    CASE
+      WHEN o.entering_origin = 'Expected' THEN 'Was Expected'
+      WHEN o.entering_origin = 'Later Month' THEN 'Was Later Month'
+      WHEN o.entering_origin = 'Past Close' THEN 'Was Past Close'
+      WHEN o.entering_origin = 'No Close Date' THEN 'Was No Close Date'
+      ELSE 'Unknown'
+    END AS won_origin
+  FROM deal_outcomes o
+  WHERE o.outcome = 'Won'
+),
+
+-- ============================================================
+-- SECTION 8: Combine Won Deals with Classifications
+-- ============================================================
+-- Union SOM wins with bluebird deals.
+
+won_deals_final AS (
   SELECT
     month_start,
     month_label,
+    deal_id,
+    deal_arr,
     deal_owner_id,
-    -- Entering pipeline (Expected to close this month)
-    COUNTIF(entering_origin = 'Expected') AS entering_expected,
-    COUNTIF(entering_origin = 'Later Month') AS entering_later_month,
-    COUNTIF(entering_origin = 'Past Close Date') AS entering_past_close,
-    COUNT(*) AS entering_total,
-    -- Outcomes for Expected deals
-    COUNTIF(outcome = 'Won' AND entering_origin = 'Expected') AS won_from_expected,
-    COUNTIF(outcome = 'Lost' AND entering_origin = 'Expected') AS lost_from_expected,
-    COUNTIF(outcome = 'Pushed' AND entering_origin = 'Expected' AND pushed_origin = 'Expected') AS pushed_expected_to_expected,
-    COUNTIF(outcome = 'Pushed' AND entering_origin = 'Expected' AND pushed_origin = 'Later Month') AS pushed_expected_to_later,
-    COUNTIF(outcome = 'Pushed' AND entering_origin = 'Expected') AS pushed_from_expected,
-    -- Outcomes for ALL entering deals
-    COUNTIF(outcome = 'Won') AS won_total,
-    COUNTIF(outcome = 'Lost') AS lost_total,
-    COUNTIF(outcome = 'Pushed') AS pushed_total,
-    COUNTIF(outcome = 'No Change') AS no_change_total,
-    -- Dollar amounts
-    SUM(CASE WHEN outcome = 'Won' AND entering_origin = 'Expected' THEN deal_amount ELSE 0 END) AS won_amount_expected,
-    SUM(CASE WHEN entering_origin = 'Expected' THEN deal_amount ELSE 0 END) AS entering_amount_expected,
-    SUM(CASE WHEN outcome = 'Lost' AND entering_origin = 'Expected' THEN deal_amount ELSE 0 END) AS lost_amount_expected,
-    SUM(CASE WHEN outcome = 'Pushed' AND entering_origin = 'Expected' THEN deal_amount ELSE 0 END) AS pushed_amount_expected
-  FROM deal_outcomes
-  GROUP BY month_start, month_label, deal_owner_id
+    won_origin,
+    'Created in Month' AS final_won_classification
+  FROM bluebird_deals
+  UNION ALL
+  SELECT
+    month_start,
+    month_label,
+    deal_id,
+    deal_arr,
+    deal_owner_id,
+    won_origin,
+    won_origin AS final_won_classification
+  FROM won_from_som
 ),
 
 -- ============================================================
--- SECTION 7: Final Output
+-- SECTION 9: Monthly Aggregates - SOM Section
 -- ============================================================
--- Computes the core In-Month Conversion metric and all supporting
--- ratios. Output is wide-format and pivotable by month_label.
+-- Aggregate outcomes for the Start of Month section.
+-- For Expected deals, tracks Won, Lost, and Pushed counts and ARR.
 
-final_output AS (
+monthly_som_aggregates AS (
   SELECT
-    ma.month_start,
-    ma.month_label,
-    ma.deal_owner_id,
-    EXTRACT(YEAR FROM ma.month_start) AS year,
-    EXTRACT(MONTH FROM ma.month_start) AS month_number,
+    month_start,
+    month_label,
+    -- Expected deals at SOM
+    COUNTIF(entering_origin = 'Expected') AS expected_count,
+    SUM(CASE WHEN entering_origin = 'Expected' THEN deal_arr ELSE 0 END) AS expected_arr,
+    -- Won from Expected
+    COUNTIF(outcome = 'Won' AND entering_origin = 'Expected') AS won_count,
+    SUM(CASE WHEN outcome = 'Won' AND entering_origin = 'Expected' THEN deal_arr ELSE 0 END) AS won_arr,
+    -- Lost from Expected
+    COUNTIF(outcome = 'Lost' AND entering_origin = 'Expected') AS lost_count,
+    SUM(CASE WHEN outcome = 'Lost' AND entering_origin = 'Expected' THEN deal_arr ELSE 0 END) AS lost_arr,
+    -- Pushed from Expected (still open at EOM)
+    COUNTIF(outcome = 'Pushed' AND entering_origin = 'Expected') AS pushed_count,
+    SUM(CASE WHEN outcome = 'Pushed' AND entering_origin = 'Expected' THEN deal_arr ELSE 0 END) AS pushed_arr
+  FROM deal_outcomes
+  GROUP BY month_start, month_label
+),
 
-    -- ========== ENTERING PIPELINE ==========
-    ma.entering_expected,
-    ma.entering_later_month,
-    ma.entering_total,
+-- ============================================================
+-- SECTION 10: Monthly Aggregates - EOM Section
+-- ============================================================
+-- Aggregate won deals by their origin classification.
 
-    -- ========== OUTCOMES (from Expected entering deals) ==========
-    ma.won_from_expected,
-    ma.lost_from_expected,
-    ma.pushed_from_expected,
+monthly_eom_aggregates AS (
+  SELECT
+    month_start,
+    month_label,
+    -- Total won this month
+    COUNT(*) AS total_won_count,
+    SUM(deal_arr) AS total_won_arr,
+    -- Won deals classified by origin at SOM
+    COUNTIF(final_won_classification = 'Was Expected') AS won_was_expected_count,
+    SUM(CASE WHEN final_won_classification = 'Was Expected' THEN deal_arr ELSE 0 END) AS won_was_expected_arr,
+    COUNTIF(final_won_classification = 'Was Later Month') AS won_was_later_month_count,
+    SUM(CASE WHEN final_won_classification = 'Was Later Month' THEN deal_arr ELSE 0 END) AS won_was_later_month_arr,
+    COUNTIF(final_won_classification = 'Created in Month') AS won_created_in_month_count,
+    SUM(CASE WHEN final_won_classification = 'Created in Month' THEN deal_arr ELSE 0 END) AS won_created_in_month_arr
+  FROM won_deals_final
+  GROUP BY month_start, month_label
+),
 
-    -- ========== OUTCOMES (all entering deals) ==========
-    ma.won_total,
-    ma.lost_total,
-    ma.pushed_total,
-    ma.no_change_total,
+-- ============================================================
+-- SECTION 11: Combine Monthly Data
+-- ============================================================
+-- Join SOM and EOM aggregates with percentages calculated.
 
-    -- ========== CORE IN-MONTH CONVERSION METRIC ==========
-    -- % Won vs Entering Expected
-    -- Formula: Won from Expected / (Won + Lost + Pushed from Expected)
-    -- Denominator = all expected deals that resolved this month
-    SAFE_DIVIDE(
-      ma.won_from_expected,
-      ma.won_from_expected + ma.lost_from_expected + ma.pushed_from_expected
-    ) AS in_month_conversion_pct,
+monthly_combined AS (
+  SELECT
+    som.month_start,
+    som.month_label,
+    -- SOM Section - Counts
+    som.expected_count,
+    som.won_count,
+    som.lost_count,
+    som.pushed_count,
+    -- SOM Section - Percentages
+    ROUND(SAFE_DIVIDE(som.won_count, som.expected_count) * 100, 1) AS pct_won,
+    ROUND(SAFE_DIVIDE(som.lost_count, som.expected_count) * 100, 1) AS pct_lost,
+    ROUND(SAFE_DIVIDE(som.pushed_count, som.expected_count) * 100, 1) AS pct_pushed,
+    -- SOM Section - ARR
+    som.expected_arr,
+    som.won_arr,
+    som.lost_arr,
+    som.pushed_arr,
+    -- EOM Section - Counts
+    COALESCE(eom.total_won_count, 0) AS total_won_count,
+    COALESCE(eom.won_was_expected_count, 0) AS won_was_expected_count,
+    COALESCE(eom.won_was_later_month_count, 0) AS won_was_later_month_count,
+    COALESCE(eom.won_created_in_month_count, 0) AS won_created_in_month_count,
+    -- EOM Section - Percentages (of total won)
+    ROUND(SAFE_DIVIDE(eom.won_was_expected_count, eom.total_won_count) * 100, 1) AS pct_won_was_expected,
+    ROUND(SAFE_DIVIDE(eom.won_was_later_month_count, eom.total_won_count) * 100, 1) AS pct_won_was_later_month,
+    ROUND(SAFE_DIVIDE(eom.won_created_in_month_count, eom.total_won_count) * 100, 1) AS pct_won_created_in_month,
+    -- EOM Section - ARR
+    COALESCE(eom.total_won_arr, 0) AS total_won_arr,
+    COALESCE(eom.won_was_expected_arr, 0) AS won_was_expected_arr,
+    COALESCE(eom.won_was_later_month_arr, 0) AS won_was_later_month_arr,
+    COALESCE(eom.won_created_in_month_arr, 0) AS won_created_in_month_arr,
+    -- Final Metric: % Won vs Entering Expected = Total Won / Expected in Month
+    ROUND(SAFE_DIVIDE(eom.total_won_count, som.expected_count) * 100, 1) AS pct_won_vs_entering_expected
+  FROM monthly_som_aggregates som
+  LEFT JOIN monthly_eom_aggregates eom
+    ON som.month_start = eom.month_start
+),
 
-    -- ========== SUPPORTING RATIOS ==========
-    -- Win Rate: Won / Total Resolved (Won + Lost)
-    SAFE_DIVIDE(
-      ma.won_from_expected,
-      ma.won_from_expected + ma.lost_from_expected
-    ) AS win_rate_pct,
+-- ============================================================
+-- SECTION 12: Add Period Grouping
+-- ============================================================
+-- Add quarter labels and period type for aggregation.
 
-    -- Loss Rate: Lost / Total Resolved
-    SAFE_DIVIDE(
-      ma.lost_from_expected,
-      ma.won_from_expected + ma.lost_from_expected
-    ) AS loss_rate_pct,
+monthly_with_period AS (
+  SELECT
+    mc.year,
+    mc.quarter_number,
+    mc.quarter_label,
+    mc.month_number,
+    comb.month_start,
+    comb.month_label,
+    comb.* EXCEPT (month_start, month_label)
+  FROM monthly_combined comb
+  JOIN month_calendar mc
+    ON comb.month_start = mc.month_start
+),
 
-    -- Push Rate: Pushed / Entering Expected
-    SAFE_DIVIDE(
-      ma.pushed_from_expected,
-      ma.entering_expected
-    ) AS push_rate_pct,
+-- ============================================================
+-- SECTION 13: Monthly Output
+-- ============================================================
+-- Output for monthly period_type.
 
-    -- Realized Rate: (Won + Lost) / Entering Expected
-    -- How much of the entering pipeline was resolved (not pushed)
-    SAFE_DIVIDE(
-      ma.won_from_expected + ma.lost_from_expected,
-      ma.entering_expected
-    ) AS realized_rate_pct,
-
-    -- ========== DOLLAR AMOUNTS ==========
-    ma.won_amount_expected,
-    ma.entering_amount_expected,
-    ma.lost_amount_expected,
-    ma.pushed_amount_expected,
-
-    -- Dollar Conversion
-    SAFE_DIVIDE(
-      ma.won_amount_expected,
-      ma.entering_amount_expected
-    ) AS dollar_conversion_pct,
-
-    -- ========== PIPELINE HEALTH INDICATORS ==========
-    -- Deals pushed back to Expected (still in pipeline but same close date)
-    ma.pushed_expected_to_expected,
-    -- Deals pushed to Later Month (close date moved out)
-    ma.pushed_expected_to_later,
-
-    -- ========== METADATA ==========
+monthly_output AS (
+  SELECT
+    'monthly' AS period_type,
+    month_start,
+    month_end,
+    month_label,
+    year,
+    quarter_number,
+    quarter_label,
+    month_number,
+    -- SOM counts
+    expected_count,
+    won_count,
+    lost_count,
+    pushed_count,
+    -- SOM percentages
+    pct_won,
+    pct_lost,
+    pct_pushed,
+    -- SOM ARR
+    expected_arr,
+    won_arr,
+    lost_arr,
+    pushed_arr,
+    -- EOM counts
+    total_won_count,
+    won_was_expected_count,
+    won_was_later_month_count,
+    won_created_in_month_count,
+    -- EOM percentages
+    pct_won_was_expected,
+    pct_won_was_later_month,
+    pct_won_created_in_month,
+    -- EOM ARR
+    total_won_arr,
+    won_was_expected_arr,
+    won_was_later_month_arr,
+    won_created_in_month_arr,
+    -- Final metric
+    pct_won_vs_entering_expected,
     CURRENT_TIMESTAMP() AS _loaded_at
+  FROM monthly_with_period
+),
 
-  FROM monthly_aggregates ma
+-- ============================================================
+-- SECTION 14: Quarterly Aggregates
+-- ============================================================
+-- Aggregate monthly data into quarterly buckets.
+
+quarterly_som_aggregates AS (
+  SELECT
+    year,
+    quarter_number,
+    quarter_label,
+    SUM(expected_count) AS expected_count,
+    SUM(won_count) AS won_count,
+    SUM(lost_count) AS lost_count,
+    SUM(pushed_count) AS pushed_count,
+    SUM(expected_arr) AS expected_arr,
+    SUM(won_arr) AS won_arr,
+    SUM(lost_arr) AS lost_arr,
+    SUM(pushed_arr) AS pushed_arr
+  FROM monthly_with_period
+  GROUP BY year, quarter_number, quarter_label
+),
+
+quarterly_eom_aggregates AS (
+  SELECT
+    year,
+    quarter_number,
+    quarter_label,
+    SUM(total_won_count) AS total_won_count,
+    SUM(won_was_expected_count) AS won_was_expected_count,
+    SUM(won_was_later_month_count) AS won_was_later_month_count,
+    SUM(won_created_in_month_count) AS won_created_in_month_count,
+    SUM(total_won_arr) AS total_won_arr,
+    SUM(won_was_expected_arr) AS won_was_expected_arr,
+    SUM(won_was_later_month_arr) AS won_was_later_month_arr,
+    SUM(won_created_in_month_arr) AS won_created_in_month_arr
+  FROM monthly_with_period
+  GROUP BY year, quarter_number, quarter_label
+),
+
+quarterly_combined AS (
+  SELECT
+    som.year,
+    som.quarter_number,
+    som.quarter_label,
+    -- SOM counts
+    som.expected_count,
+    som.won_count,
+    som.lost_count,
+    som.pushed_count,
+    -- SOM percentages
+    ROUND(SAFE_DIVIDE(som.won_count, som.expected_count) * 100, 1) AS pct_won,
+    ROUND(SAFE_DIVIDE(som.lost_count, som.expected_count) * 100, 1) AS pct_lost,
+    ROUND(SAFE_DIVIDE(som.pushed_count, som.expected_count) * 100, 1) AS pct_pushed,
+    -- SOM ARR
+    som.expected_arr,
+    som.won_arr,
+    som.lost_arr,
+    som.pushed_arr,
+    -- EOM counts
+    eom.total_won_count,
+    eom.won_was_expected_count,
+    eom.won_was_later_month_count,
+    eom.won_created_in_month_count,
+    -- EOM percentages
+    ROUND(SAFE_DIVIDE(eom.won_was_expected_count, eom.total_won_count) * 100, 1) AS pct_won_was_expected,
+    ROUND(SAFE_DIVIDE(eom.won_was_later_month_count, eom.total_won_count) * 100, 1) AS pct_won_was_later_month,
+    ROUND(SAFE_DIVIDE(eom.won_created_in_month_count, eom.total_won_count) * 100, 1) AS pct_won_created_in_month,
+    -- EOM ARR
+    eom.total_won_arr,
+    eom.won_was_expected_arr,
+    eom.won_was_later_month_arr,
+    eom.won_created_in_month_arr,
+    -- Final metric
+    ROUND(SAFE_DIVIDE(eom.total_won_count, som.expected_count) * 100, 1) AS pct_won_vs_entering_expected
+  FROM quarterly_som_aggregates som
+  JOIN quarterly_eom_aggregates eom
+    ON som.year = eom.year
+    AND som.quarter_number = eom.quarter_number
+),
+
+quarterly_output AS (
+  SELECT
+    'quarterly' AS period_type,
+    DATE(CONCAT(CAST(year AS STRING), '-', CAST((quarter_number - 1) * 3 + 1 AS STRING), '-01')) AS month_start,
+    LAST_DAY(DATE(CONCAT(CAST(year AS STRING), '-', CAST(quarter_number * 3 AS STRING), '-01')), MONTH) AS month_end,
+    quarter_label AS month_label,
+    year,
+    quarter_number,
+    quarter_label,
+    0 AS month_number,
+    -- SOM counts
+    expected_count,
+    won_count,
+    lost_count,
+    pushed_count,
+    -- SOM percentages
+    pct_won,
+    pct_lost,
+    pct_pushed,
+    -- SOM ARR
+    expected_arr,
+    won_arr,
+    lost_arr,
+    pushed_arr,
+    -- EOM counts
+    total_won_count,
+    won_was_expected_count,
+    won_was_later_month_count,
+    won_created_in_month_count,
+    -- EOM percentages
+    pct_won_was_expected,
+    pct_won_was_later_month,
+    pct_won_created_in_month,
+    -- EOM ARR
+    total_won_arr,
+    won_was_expected_arr,
+    won_was_later_month_arr,
+    won_created_in_month_arr,
+    -- Final metric
+    pct_won_vs_entering_expected,
+    CURRENT_TIMESTAMP() AS _loaded_at
+  FROM quarterly_combined
+),
+
+-- ============================================================
+-- SECTION 15: Combined Output
+-- ============================================================
+-- Union monthly and quarterly outputs.
+
+combined_output AS (
+  SELECT * FROM monthly_output
+  UNION ALL
+  SELECT * FROM quarterly_output
 )
 
-SELECT * FROM final_output
-ORDER BY month_start;
+SELECT * FROM combined_output
+ORDER BY period_type, month_start;

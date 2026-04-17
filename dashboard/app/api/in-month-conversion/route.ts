@@ -19,9 +19,13 @@ export async function GET(request: Request) {
     const start_month = searchParams.get('start_month') ?? undefined;
     const end_month = searchParams.get('end_month') ?? undefined;
     const deal_owner_id = searchParams.get('deal_owner_id') ?? undefined;
+    const period_type_raw = searchParams.get('period_type') ?? undefined;
+    const period_type = period_type_raw === 'monthly' || period_type_raw === 'quarterly'
+      ? period_type_raw
+      : undefined;
 
     // Fetch data from BigQuery
-    const data = await getInMonthConversion({ start_month, end_month, deal_owner_id });
+    const data = await getInMonthConversion({ start_month, end_month, deal_owner_id, period_type });
 
     return NextResponse.json({ data }, {
       headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=3600' },

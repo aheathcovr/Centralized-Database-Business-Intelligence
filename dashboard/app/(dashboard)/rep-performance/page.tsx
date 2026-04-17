@@ -141,7 +141,9 @@ export default function RepPerformancePage() {
   const avgWinRate = reps.length > 0
     ? Math.round(reps.reduce((s, r) => s + r.winRate, 0) / reps.length)
     : 0;
-  const topRep = reps.reduce((best, r) => r.dealsClosed > best.dealsClosed ? r : best, reps[0]);
+  const topRep = reps.length > 0
+    ? reps.reduce((best, r) => r.dealsClosed > best.dealsClosed ? r : best, reps[0])
+    : null;
 
   const maxDeals = Math.max(...reps.map((r) => r.dealsClosed), 1);
   const maxActivities = Math.max(...reps.map((r) => r.activitiesLogged), 1);
@@ -203,30 +205,34 @@ export default function RepPerformancePage() {
             <div className="card">
               <h3 className="text-lg font-semibold mb-1">Deals Closed by Rep</h3>
               <p className="text-sm mb-4">Number of deals closed per sales representative</p>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={reps} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
-                  <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
-                  <Tooltip />
-                  <Bar dataKey="dealsClosed" name="Deals" fill="#1570B6" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div role="img" aria-label="Deals closed by sales representative bar chart">
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={reps} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
+                    <XAxis type="number" tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }} />
+                    <YAxis dataKey="name" type="category" width={120} tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }} />
+                    <Tooltip />
+                    <Bar dataKey="dealsClosed" name="Deals" fill="#1570B6" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
             <div className="card">
               <h3 className="text-lg font-semibold mb-1">Performance Radar</h3>
               <p className="text-sm mb-4">Normalized score (0-100) across key metrics</p>
-              <ResponsiveContainer width="100%" height={280}>
-                <RadarChart data={radarData}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="name" tick={{ fontFamily: 'var(--font-primary-sans)', fontSize: 11 }} />
-                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  <Radar name="Deals" dataKey="deals" stroke="#1570B6" fill="#1570B6" fillOpacity={0.2} />
-                  <Radar name="Win Rate" dataKey="winRate" stroke="#3B7E6B" fill="#3B7E6B" fillOpacity={0.15} />
-                  <Legend />
-                </RadarChart>
-              </ResponsiveContainer>
+              <div role="img" aria-label="Sales rep performance radar chart showing multiple metrics">
+                <ResponsiveContainer width="100%" height={280}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="name" tick={{ fontFamily: 'var(--font-primary-sans)', fontSize: 11 }} />
+                    <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
+                    <Radar name="Deals" dataKey="deals" stroke="#1570B6" fill="#1570B6" fillOpacity={0.2} />
+                    <Radar name="Win Rate" dataKey="winRate" stroke="#3B7E6B" fill="#3B7E6B" fillOpacity={0.15} />
+                    <Legend />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 

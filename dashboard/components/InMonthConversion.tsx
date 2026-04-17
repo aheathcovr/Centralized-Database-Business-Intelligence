@@ -1,49 +1,43 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  Cell,
-  LabelList,
-} from 'recharts';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface InMonthConversionRow {
-  month_start: string;
-  month_label: string;
-  year: number;
-  month_number: number;
-  entering_expected: number;
-  entering_later_month: number;
-  entering_total: number;
-  won_from_expected: number;
-  lost_from_expected: number;
-  pushed_from_expected: number;
-  won_total: number;
-  lost_total: number;
-  pushed_total: number;
-  no_change_total: number;
-  in_month_conversion_pct: number | null;
-  win_rate_pct: number | null;
-  loss_rate_pct: number | null;
-  push_rate_pct: number | null;
-  realized_rate_pct: number | null;
-  won_amount_expected: number;
-  entering_amount_expected: number;
-  lost_amount_expected: number;
-  pushed_amount_expected: number;
-  dollar_conversion_pct: number | null;
-  pushed_expected_to_expected: number;
-  pushed_expected_to_later: number;
-  _loaded_at: string;
+  period_type: 'monthly' | 'quarterly';
+  period_start: string;
+  period_label: string;
+  
+  // SOM
+  expected_count: number;
+  won_count: number;
+  lost_count: number;
+  pushed_count: number;
+  pct_won: number | null;
+  pct_lost: number | null;
+  pct_pushed: number | null;
+  expected_arr: number;
+  won_arr: number;
+  lost_arr: number;
+  pushed_arr: number;
+  pct_won_arr: number | null;
+  
+  // EOM
+  total_won_count: number;
+  won_was_expected_count: number;
+  won_was_later_month_count: number;
+  won_created_in_month_count: number;
+  pct_won_was_expected: number | null;
+  pct_won_was_later_month: number | null;
+  pct_won_created_in_month: number | null;
+  total_won_arr: number;
+  won_was_expected_arr: number;
+  won_was_later_month_arr: number;
+  won_created_in_month_arr: number;
+  
+  // Final
+  pct_won_vs_entering_expected: number | null;
 }
 
 interface InMonthConversionProps {
@@ -54,80 +48,193 @@ interface InMonthConversionProps {
   };
 }
 
-// ── Constants ──────────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────────────
 
-const SOM_CHART_COLORS = {
+const COLORS = {
   expected: '#1570B6',
   won: '#3B7E6B',
   lost: '#F47C44',
   pushed: '#F47C44',
-};
-
-const WON_ORIGIN_COLORS = {
-  expected: '#1570B6',
-  pulledForward: '#3B7E6B',
   created: '#A67FB9',
+  laterMonth: '#8B5CF6',
 };
 
-const CONVERSION_BAR_COLOR = '#3B7E6B';
-const CONVERSION_THRESHOLD_COLOR = '#F47C44';
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function pct(value: number | null | undefined): string {
+function pct(value: number | null): string {
   if (value == null) return '—';
-  return `${(value * 100).toFixed(1)}%`;
+  return `${value.toFixed(1)}%`;
 }
 
-function fmt(value: number | null | undefined): string {
+function fmt(value: number | null): string {
   if (value == null) return '—';
   return value.toLocaleString();
 }
 
-function fmtDollar(value: number | null | undefined): string {
+function fmtDollar(value: number | null): string {
   if (value == null) return '—';
   return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
-// ── Custom Tooltip ─────────────────────────────────────────────────────────
+function getColorClass(pct: number | null): string {
+  if (pct == null) return 'text-gray-900';
+  if (pct >= 50) return 'text-[#3B7E6B]'; // won/green
+  if (pct >= 30) return 'text-amber-600';
+  return 'text-red-500';
+}
 
-function SomTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function ToggleSwitch({
+  label,
+  isOn,
+  onToggle,
+}: {
+  label: string;
+  isOn: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm">
-      <p className="font-semibold text-gray-900 mb-2">{label}</p>
-      {payload.map((entry: any, index: number) => (
-        <div key={index} className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="text-gray-600">{entry.name}</span>
-          </div>
-          <span className="font-mono tabular-nums text-gray-900">
-            {entry.value?.toLocaleString()}
-          </span>
-        </div>
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex items-center gap-3 group"
+      aria-pressed={isOn}
+    >
+      <span className="text-sm font-medium text-gray-600 group-hover:text-gray-900 transition-colors">
+        {label}
+      </span>
+      <div
+        className={`relative w-11 h-6 rounded-full transition-colors ${
+          isOn ? 'bg-[#1570B6]' : 'bg-gray-300'
+        }`}
+      >
+        <div
+          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+            isOn ? 'translate-x-5' : 'translate-x-0'
+          }`}
+        />
+      </div>
+    </button>
   );
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
+function TableCell({
+  children,
+  className = '',
+  numeric = false,
+  bold = false,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  numeric?: boolean;
+  bold?: boolean;
+}) {
+  return (
+    <td
+      className={`px-4 py-3 text-sm ${numeric ? 'text-right font-mono tabular-nums' : ''} ${
+        bold ? 'font-semibold' : ''
+      } ${className}`}
+    >
+      {children}
+    </td>
+  );
+}
+
+function MetricRow({
+  label,
+  values,
+  subtextValues,
+  color,
+  isSectionHeader = false,
+}: {
+  label: string;
+  values: (number | null)[];
+  subtextValues?: (number | null)[];
+  color?: string;
+  isSectionHeader?: boolean;
+}) {
+  return (
+    <tr className={isSectionHeader ? 'bg-gray-50' : ''}>
+      <td
+        className={`px-4 py-3 text-sm whitespace-nowrap ${
+          isSectionHeader ? 'font-semibold text-gray-900' : 'font-medium text-gray-900'
+        } sticky left-0 ${isSectionHeader ? 'bg-gray-50' : 'bg-white'} z-10`}
+      >
+        {color && (
+          <span
+            className="inline-block w-3 h-3 rounded-sm mr-2"
+            style={{ backgroundColor: color }}
+          />
+        )}
+        {label}
+      </td>
+      {values.map((val, i) => (
+        <TableCell key={i} numeric>
+          <span className={isSectionHeader ? 'font-semibold' : ''}>
+            {val != null ? val.toLocaleString() : '—'}
+          </span>
+          {subtextValues && subtextValues[i] != null && (
+            <span className="block text-xs text-gray-500">{pct(subtextValues[i])}</span>
+          )}
+        </TableCell>
+      ))}
+    </tr>
+  );
+}
+
+function PercentRow({
+  label,
+  values,
+  color,
+  isSectionHeader = false,
+  invertColors = false,
+}: {
+  label: string;
+  values: (number | null)[];
+  color?: string;
+  isSectionHeader?: boolean;
+  invertColors?: boolean;
+}) {
+  return (
+    <tr className={isSectionHeader ? 'bg-gray-50' : ''}>
+      <td
+        className={`px-4 py-3 text-sm whitespace-nowrap ${
+          isSectionHeader ? 'font-semibold text-gray-900' : 'font-medium text-gray-900'
+        } sticky left-0 ${isSectionHeader ? 'bg-gray-50' : 'bg-white'} z-10`}
+      >
+        {color && (
+          <span
+            className="inline-block w-3 h-3 rounded-sm mr-2"
+            style={{ backgroundColor: color }}
+          />
+        )}
+        {label}
+      </td>
+      {values.map((val, i) => (
+        <TableCell key={i} numeric>
+          <span className={getColorClass(val)}>
+            {pct(val)}
+          </span>
+        </TableCell>
+      ))}
+    </tr>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function InMonthConversion({ user }: InMonthConversionProps) {
   const [data, setData] = useState<InMonthConversionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [periodType, setPeriodType] = useState<'monthly' | 'quarterly'>('monthly');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async (type: 'monthly' | 'quarterly') => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await fetch('/api/in-month-conversion');
+      const response = await fetch(`/api/in-month-conversion?period_type=${type}`);
       if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
       }
@@ -139,60 +246,60 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchData(periodType);
+  }, [fetchData, periodType]);
+
+  const handleToggle = () => {
+    setPeriodType((prev) => (prev === 'monthly' ? 'quarterly' : 'monthly'));
   };
 
-  // ── Pivot: months as columns ─────────────────────────────────────────────
+  // Extract period labels for table columns
+  const periodLabels = useMemo(() => data.map((d) => d.period_label), [data]);
 
-  const months = useMemo(() => data.map((d) => d.month_label), [data]);
+  // SOM metrics arrays
+  const somMetrics = useMemo(() => {
+    if (data.length === 0) return null;
+    return {
+      expected_count: data.map((d) => d.expected_count),
+      won_count: data.map((d) => d.won_count),
+      lost_count: data.map((d) => d.lost_count),
+      pushed_count: data.map((d) => d.pushed_count),
+      pct_won: data.map((d) => d.pct_won),
+      pct_lost: data.map((d) => d.pct_lost),
+      pct_pushed: data.map((d) => d.pct_pushed),
+      expected_arr: data.map((d) => d.expected_arr),
+      won_arr: data.map((d) => d.won_arr),
+      lost_arr: data.map((d) => d.lost_arr),
+      pushed_arr: data.map((d) => d.pushed_arr),
+      pct_won_arr: data.map((d) => d.pct_won_arr),
+    };
+  }, [data]);
 
-  // ── Start of Month chart data ────────────────────────────────────────────
+  // EOM metrics arrays
+  const eomMetrics = useMemo(() => {
+    if (data.length === 0) return null;
+    return {
+      total_won_count: data.map((d) => d.total_won_count),
+      won_was_expected_count: data.map((d) => d.won_was_expected_count),
+      won_was_later_month_count: data.map((d) => d.won_was_later_month_count),
+      won_created_in_month_count: data.map((d) => d.won_created_in_month_count),
+      pct_won_was_expected: data.map((d) => d.pct_won_was_expected),
+      pct_won_was_later_month: data.map((d) => d.pct_won_was_later_month),
+      pct_won_created_in_month: data.map((d) => d.pct_won_created_in_month),
+      total_won_arr: data.map((d) => d.total_won_arr),
+      won_was_expected_arr: data.map((d) => d.won_was_expected_arr),
+      won_was_later_month_arr: data.map((d) => d.won_was_later_month_arr),
+      won_created_in_month_arr: data.map((d) => d.won_created_in_month_arr),
+    };
+  }, [data]);
 
-  const somChartData = useMemo(
-    () =>
-      data.map((d) => ({
-        month: d.month_label,
-        Expected: d.entering_expected,
-        Won: d.won_from_expected,
-        Lost: d.lost_from_expected,
-        Pushed: d.pushed_from_expected,
-      })),
-    [data]
-  );
-
-  // ── End of Month: Won origin attribution ─────────────────────────────────
-  // The SQL view tracks newly_won_deals with origin 'Created' / 'Reopened'
-  // but we don't have those columns directly in the final output.
-  // We can approximate:
-  //   - Won from Expected = won_from_expected (was expected at start of month)
-  //   - Total Won = won_total
-  //   - Won from other origins = won_total - won_from_expected
-  // For simplicity we attribute the difference as "Pulled Forward / Created".
-
-  const eomChartData = useMemo(
-    () =>
-      data.map((d) => {
-        const wonOther = Math.max(0, d.won_total - d.won_from_expected);
-        return {
-          month: d.month_label,
-          'Won from Expected': d.won_from_expected,
-          'Pulled Forward / Created': wonOther,
-        };
-      }),
-    [data]
-  );
-
-  // ── Conversion metric chart data ─────────────────────────────────────────
-
-  const conversionChartData = useMemo(
-    () =>
-      data.map((d) => ({
-        month: d.month_label,
-        conversion: d.in_month_conversion_pct != null
-          ? Math.round(d.in_month_conversion_pct * 100 * 10) / 10
-          : null,
-      })),
-    [data]
-  );
+  // Final metric
+  const finalMetric = useMemo(() => {
+    return data.map((d) => d.pct_won_vs_entering_expected);
+  }, [data]);
 
   // ── Loading / Error states ───────────────────────────────────────────────
 
@@ -222,9 +329,24 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
               d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
             />
           </svg>
-          <p className="font-medium mb-3" style={{ color: "#F47C44" }}>{error}</p>
-          <button onClick={fetchData} className="btn-primary text-sm">
+          <p className="font-medium mb-3" style={{ color: '#F47C44' }}>
+            {error}
+          </p>
+          <button onClick={() => fetchData(periodType)} className="btn-primary text-sm">
             Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-2">No data available</p>
+          <button onClick={() => fetchData(periodType)} className="btn-primary text-sm">
+            Refresh
           </button>
         </div>
       </div>
@@ -244,313 +366,324 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
                 <span className="text-white font-bold">C</span>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  In-Month Conversion
-                </h1>
+                <h1 className="text-xl font-bold text-gray-900">In-Month Conversion</h1>
                 <p className="text-sm text-gray-500">
                   Pipeline conversion analysis — % Won vs Entering Expected
                 </p>
               </div>
             </div>
-            <div className="text-sm text-gray-500">
-              {user?.email}
+            <div className="flex items-center gap-6">
+              <ToggleSwitch
+                label="Quarterly"
+                isOn={periodType === 'quarterly'}
+                onToggle={handleToggle}
+              />
+              <div className="text-sm text-gray-500">{user?.email}</div>
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* ──────────────────────────────────────────────────────────────────
-            SECTION 1: Start of Month Expected
-        ────────────────────────────────────────────────────────────────── */}
+        {/* Period label badge */}
+        <div className="mb-6">
+          <span className="text-xs text-gray-400 bg-gray-100 rounded px-2 py-1 uppercase tracking-wider">
+            {periodType === 'monthly' ? 'Monthly' : 'Quarterly'} View
+          </span>
+        </div>
+
+        {/* ════════════════════════════════════════════════════════════════════
+            SECTION 1: Start of Month, Looking Forward
+        ════════════════════════════════════════════════════════════════════ */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-lg font-semibold">
-              Start of Month — Pipeline Snapshot
+            <h2 className="text-lg font-semibold text-gray-900">
+              Start of Month, Looking Forward
             </h2>
             <span className="text-xs text-gray-400 bg-gray-100 rounded px-2 py-0.5">
-              Expected entering deals by month
+              Expected deals and their outcomes
             </span>
           </div>
 
-          {/* Summary table — pivot columns are months */}
-          <div className="card mb-6 overflow-x-auto">
-            <table className="dashboard-table">
+          <div className="card overflow-x-auto">
+            <table className="dashboard-table w-full min-w-[800px]">
               <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-white z-10">
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 w-64"
+                    style={{ minWidth: '256px' }}
+                  >
                     Metric
                   </th>
-                  {months.map((m) => (
+                  {periodLabels.map((label) => (
                     <th
-                      key={m}
-                      className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-mono"
+                      key={label}
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-mono whitespace-nowrap"
+                      style={{ minWidth: '100px' }}
                     >
-                      {m}
+                      {label}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody >
-                {/* Row: Expected in Month */}
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
-                    <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: SOM_CHART_COLORS.expected }} />
-                    Expected in Month
+              <tbody>
+                {/* ── Count Section ── */}
+                <tr className="bg-gray-100">
+                  <td
+                    colSpan={periodLabels.length + 1}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10"
+                  >
+                    # Deals
                   </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      {fmt(d.entering_expected)}
-                    </td>
-                  ))}
                 </tr>
-                {/* Row: Won */}
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
-                    <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: SOM_CHART_COLORS.won }} />
-                    Won
-                  </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      <div>{fmt(d.won_from_expected)}</div>
-                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        {d.entering_expected > 0
-                          ? pct(d.won_from_expected / d.entering_expected)
-                          : '—'}
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-                {/* Row: Lost */}
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
-                    <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: SOM_CHART_COLORS.lost }} />
-                    Lost
-                  </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      <div>{fmt(d.lost_from_expected)}</div>
-                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        {d.entering_expected > 0
-                          ? pct(d.lost_from_expected / d.entering_expected)
-                          : '—'}
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-                {/* Row: Pushed */}
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
-                    <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: SOM_CHART_COLORS.pushed }} />
-                    Pushed
-                  </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      <div>{fmt(d.pushed_from_expected)}</div>
-                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        {d.entering_expected > 0
-                          ? pct(d.pushed_from_expected / d.entering_expected)
-                          : '—'}
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-                {/* Row: % breakdown separator */}
-                <tr className="">
-                  <td className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
+
+                <MetricRow
+                  label="Expected in Month"
+                  values={somMetrics?.expected_count || []}
+                  color={COLORS.expected}
+                  isSectionHeader
+                />
+                <MetricRow
+                  label="Won in Month"
+                  values={somMetrics?.won_count || []}
+                  subtextValues={somMetrics?.pct_won}
+                  color={COLORS.won}
+                />
+                <MetricRow
+                  label="Lost"
+                  values={somMetrics?.lost_count || []}
+                  subtextValues={somMetrics?.pct_lost}
+                  color={COLORS.lost}
+                />
+                <MetricRow
+                  label="Pushed"
+                  values={somMetrics?.pushed_count || []}
+                  subtextValues={somMetrics?.pct_pushed}
+                  color={COLORS.pushed}
+                />
+
+                <tr className="bg-gray-100">
+                  <td
+                    colSpan={periodLabels.length + 1}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10"
+                  >
                     % of Expected
                   </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-2" />
-                  ))}
                 </tr>
-                {/* Row: Win Rate */}
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 sticky left-0 bg-white pl-8">
-                    Win Rate (Won / Resolved)
+
+                <PercentRow label="% Won" values={somMetrics?.pct_won || []} color={COLORS.won} />
+                <PercentRow label="% Lost" values={somMetrics?.pct_lost || []} color={COLORS.lost} />
+                <PercentRow label="% Pushed" values={somMetrics?.pct_pushed || []} color={COLORS.pushed} />
+
+                {/* ── ARR Section ── */}
+                <tr className="bg-gray-100">
+                  <td
+                    colSpan={periodLabels.length + 1}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10"
+                  >
+                    $ ARR
                   </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-700 font-mono tabular-nums">
-                      {pct(d.win_rate_pct)}
-                    </td>
-                  ))}
                 </tr>
-                {/* Row: Push Rate */}
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 sticky left-0 bg-white pl-8">
-                    Push Rate (Pushed / Expected)
+
+                <MetricRow
+                  label="Expected in Month ($)"
+                  values={somMetrics?.expected_arr || []}
+                  color={COLORS.expected}
+                  isSectionHeader
+                />
+                <MetricRow label="Won in Month ($)" values={somMetrics?.won_arr || []} color={COLORS.won} />
+                <MetricRow label="Lost ($)" values={somMetrics?.lost_arr || []} color={COLORS.lost} />
+                <MetricRow label="Pushed ($)" values={somMetrics?.pushed_arr || []} color={COLORS.pushed} />
+
+                <tr className="bg-gray-100">
+                  <td
+                    colSpan={periodLabels.length + 1}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10"
+                  >
+                    % of Expected ($)
                   </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-700 font-mono tabular-nums">
-                      {pct(d.push_rate_pct)}
-                    </td>
-                  ))}
                 </tr>
-                {/* Row: Realized Rate */}
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 sticky left-0 bg-white pl-8">
-                    Realized Rate (Won + Lost / Expected)
-                  </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-700 font-mono tabular-nums">
-                      {pct(d.realized_rate_pct)}
-                    </td>
-                  ))}
-                </tr>
+
+                <PercentRow label="% Won ($)" values={somMetrics?.pct_won_arr || []} color={COLORS.won} />
               </tbody>
             </table>
           </div>
-
-          {/* Start of Month bar chart */}
-          {somChartData.length > 0 && (
-            <div className="card">
-              <h3 className="text-base font-semibold text-gray-900 mb-1">
-                Start of Month — Outcome Breakdown
-              </h3>
-              <p className="text-sm mb-4">
-                Deals that entered the month in Expected-to-Close status and their outcome
-              </p>
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={somChartData} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
-                  />
-                  <YAxis
-                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
-                  />
-                  <Tooltip content={<SomTooltip />} />
-                  <Legend
-                    wrapperStyle={{ fontFamily: 'var(--font-primary-sans)', fontSize: 12 }}
-                  />
-                  <Bar dataKey="Expected" fill={SOM_CHART_COLORS.expected} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Expected" position="top" style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 10, fill: '#696F7B' }} />
-                  </Bar>
-                  <Bar dataKey="Won" fill={SOM_CHART_COLORS.won} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Won" position="top" style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 10, fill: '#696F7B' }} />
-                  </Bar>
-                  <Bar dataKey="Lost" fill={SOM_CHART_COLORS.lost} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Lost" position="top" style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 10, fill: '#696F7B' }} />
-                  </Bar>
-                  <Bar dataKey="Pushed" fill={SOM_CHART_COLORS.pushed} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="Pushed" position="top" style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 10, fill: '#696F7B' }} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
         </div>
 
-        {/* ──────────────────────────────────────────────────────────────────
-            SECTION 2: End of Month Actuals — Won Attribution
-        ────────────────────────────────────────────────────────────────── */}
+        {/* ════════════════════════════════════════════════════════════════════
+            SECTION 2: End of Month, Looking Back
+        ════════════════════════════════════════════════════════════════════ */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-lg font-semibold">
-              End of Month — Won Attribution
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900">End of Month, Looking Back</h2>
             <span className="text-xs text-gray-400 bg-gray-100 rounded px-2 py-0.5">
-              Total won deals by origin
+              Won deals by origin
             </span>
           </div>
 
-          {/* Won attribution table — pivot columns are months */}
-          <div className="card mb-6 overflow-x-auto">
-            <table className="dashboard-table">
+          <div className="card overflow-x-auto">
+            <table className="dashboard-table w-full min-w-[800px]">
               <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-white z-10">
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 w-64"
+                    style={{ minWidth: '256px' }}
+                  >
                     Metric
                   </th>
-                  {months.map((m) => (
+                  {periodLabels.map((label) => (
                     <th
-                      key={m}
-                      className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-mono"
+                      key={label}
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-mono whitespace-nowrap"
+                      style={{ minWidth: '100px' }}
                     >
-                      {m}
+                      {label}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody >
-                {/* Row: Total Won */}
-                <tr className="bg-gray-50 font-semibold">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 sticky left-0 bg-gray-50">
-                    Total Won
+              <tbody>
+                {/* ── Count Section ── */}
+                <tr className="bg-gray-100">
+                  <td
+                    colSpan={periodLabels.length + 1}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10"
+                  >
+                    # Deals
                   </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      {fmt(d.won_total)}
-                    </td>
+                </tr>
+
+                <MetricRow
+                  label="Total Won (# Deals)"
+                  values={eomMetrics?.total_won_count || []}
+                  color={COLORS.won}
+                  isSectionHeader
+                />
+                <MetricRow
+                  label="Was Expected in Month"
+                  values={eomMetrics?.won_was_expected_count || []}
+                  subtextValues={eomMetrics?.pct_won_was_expected}
+                  color={COLORS.expected}
+                />
+                <MetricRow
+                  label="Was Expected in Later Month"
+                  values={eomMetrics?.won_was_later_month_count || []}
+                  subtextValues={eomMetrics?.pct_won_was_later_month}
+                  color={COLORS.laterMonth}
+                />
+                <MetricRow
+                  label="Created in Month"
+                  values={eomMetrics?.won_created_in_month_count || []}
+                  subtextValues={eomMetrics?.pct_won_created_in_month}
+                  color={COLORS.created}
+                />
+
+                <tr className="bg-gray-100">
+                  <td
+                    colSpan={periodLabels.length + 1}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10"
+                  >
+                    % of Won
+                  </td>
+                </tr>
+
+                <PercentRow
+                  label="% Was Expected"
+                  values={eomMetrics?.pct_won_was_expected || []}
+                  color={COLORS.expected}
+                />
+                <PercentRow
+                  label="% Was Later Month"
+                  values={eomMetrics?.pct_won_was_later_month || []}
+                  color={COLORS.laterMonth}
+                />
+                <PercentRow
+                  label="% Created"
+                  values={eomMetrics?.pct_won_created_in_month || []}
+                  color={COLORS.created}
+                />
+
+                {/* ── ARR Section ── */}
+                <tr className="bg-gray-100">
+                  <td
+                    colSpan={periodLabels.length + 1}
+                    className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10"
+                  >
+                    $ ARR
+                  </td>
+                </tr>
+
+                <MetricRow
+                  label="Total Won $ ARR"
+                  values={eomMetrics?.total_won_arr || []}
+                  color={COLORS.won}
+                  isSectionHeader
+                />
+                <MetricRow
+                  label="Was Expected ($)"
+                  values={eomMetrics?.won_was_expected_arr || []}
+                  color={COLORS.expected}
+                />
+                <MetricRow
+                  label="Was Later Month ($)"
+                  values={eomMetrics?.won_was_later_month_arr || []}
+                  color={COLORS.laterMonth}
+                />
+                <MetricRow
+                  label="Created ($)"
+                  values={eomMetrics?.won_created_in_month_arr || []}
+                  color={COLORS.created}
+                />
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ════════════════════════════════════════════════════════════════════
+            SECTION 3: Final Metric Row
+        ════════════════════════════════════════════════════════════════════ */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Final Metric</h2>
+            <span className="text-xs text-gray-400 bg-gray-100 rounded px-2 py-0.5">
+              % Won vs Entering Expected
+            </span>
+          </div>
+
+          <div className="card overflow-x-auto">
+            <table className="dashboard-table w-full min-w-[800px]">
+              <thead>
+                <tr>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 w-64"
+                    style={{ minWidth: '256px' }}
+                  >
+                    Metric
+                  </th>
+                  {periodLabels.map((label) => (
+                    <th
+                      key={label}
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-mono whitespace-nowrap"
+                      style={{ minWidth: '100px' }}
+                    >
+                      {label}
+                    </th>
                   ))}
                 </tr>
-                {/* Row: Won from Expected */}
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white pl-8">
-                    <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: WON_ORIGIN_COLORS.expected }} />
-                    Was Expected
+              </thead>
+              <tbody>
+                <tr className="bg-[#1570B6]/5">
+                  <td
+                    className="px-4 py-4 text-sm font-bold text-gray-900 sticky left-0 bg-[#1570B6]/5 z-10"
+                  >
+                    % Won vs Entering Expected
                   </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      <div>{fmt(d.won_from_expected)}</div>
-                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        {d.won_total > 0
-                          ? pct(d.won_from_expected / d.won_total)
-                          : '—'}
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-                {/* Row: Pulled Forward / Created */}
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white pl-8">
-                    <span className="inline-block w-3 h-3 rounded-sm mr-2" style={{ backgroundColor: WON_ORIGIN_COLORS.pulledForward }} />
-                    Pulled Forward / Created in Month
-                  </td>
-                  {data.map((d) => {
-                    const other = Math.max(0, d.won_total - d.won_from_expected);
-                    return (
-                      <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                        <div>{fmt(other)}</div>
-                        <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                          {d.won_total > 0
-                            ? pct(other / d.won_total)
-                            : '—'}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-                {/* Row: Dollar amounts */}
-                <tr className="bg-gray-50 font-semibold">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 sticky left-0 bg-gray-50">
-                    Won $ (from Expected)
-                  </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      <div>{fmtDollar(d.won_amount_expected)}</div>
-                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        of {fmtDollar(d.entering_amount_expected)} expected
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-                {/* Row: Dollar Conversion */}
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 sticky left-0 bg-white pl-8">
-                    Dollar Conversion Rate
-                  </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right font-mono tabular-nums">
-                      <span className={
-                        (d.dollar_conversion_pct ?? 0) >= 0.5
-                          ? 'text-green-600 font-semibold'
-                          : (d.dollar_conversion_pct ?? 0) >= 0.3
-                          ? 'text-amber-600'
-                          : 'text-red-600 font-semibold'
-                      }>
-                        {pct(d.dollar_conversion_pct)}
+                  {finalMetric.map((val, i) => (
+                    <td key={i} className="px-4 py-4 text-right">
+                      <span
+                        className={`text-xl font-bold font-mono tabular-nums ${getColorClass(val)}`}
+                      >
+                        {pct(val)}
                       </span>
                     </td>
                   ))}
@@ -558,245 +691,6 @@ export default function InMonthConversion({ user }: InMonthConversionProps) {
               </tbody>
             </table>
           </div>
-
-          {/* Won attribution stacked bar chart */}
-          {eomChartData.length > 0 && (
-            <div className="card">
-              <h3 className="text-base font-semibold text-gray-900 mb-1">
-                Won Deals — Origin Attribution
-              </h3>
-              <p className="text-sm mb-4">
-                Breakdown of closed-won deals: those that were Expected at start of month vs Pulled Forward / Created during the month
-              </p>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={eomChartData} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
-                  />
-                  <YAxis
-                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
-                  />
-                  <Tooltip content={<SomTooltip />} />
-                  <Legend
-                    wrapperStyle={{ fontFamily: 'var(--font-primary-sans)', fontSize: 12 }}
-                  />
-                  <Bar dataKey="Won from Expected" stackId="won" fill={WON_ORIGIN_COLORS.expected} radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Pulled Forward / Created" stackId="won" fill={WON_ORIGIN_COLORS.pulledForward} radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-
-        {/* ──────────────────────────────────────────────────────────────────
-            SECTION 3: Final Output Metric — % Won vs Entering Expected
-        ────────────────────────────────────────────────────────────────── */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-lg font-semibold">
-              Final Output — In-Month Conversion
-            </h2>
-            <span className="text-xs text-gray-400 bg-gray-100 rounded px-2 py-0.5">
-              % Won vs Entering Expected
-            </span>
-          </div>
-
-          {/* Large KPI cards */}
-          {data.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-              {data.slice(-5).map((d) => {
-                const conversionPct = d.in_month_conversion_pct != null
-                  ? Math.round(d.in_month_conversion_pct * 100 * 10) / 10
-                  : null;
-                const isGood = (d.in_month_conversion_pct ?? 0) >= 0.5;
-                const isMid = (d.in_month_conversion_pct ?? 0) >= 0.3;
-                return (
-                  <div
-                    key={d.month_label}
-                    className={
-                      `card border-l-4 ${
-                        isGood
-                          ? 'border-l-green-500'
-                          : isMid
-                          ? 'border-l-amber-500'
-                          : 'border-l-red-500'
-                      }`
-                    }
-                  >
-                    <p className="text-[11px] uppercase tracking-widest mb-2">{d.month_label}</p>
-                    <p className={
-                      `text-3xl font-bold font-mono tabular-nums ${
-                        isGood
-                          ? 'text-green-600'
-                          : isMid
-                          ? 'text-amber-600'
-                          : 'text-red-600'
-                      }`
-                    }>
-                      {conversionPct != null ? `${conversionPct}%` : '—'}
-                    </p>
-                    <p className="text-[11px] mt-1.5">
-                      {fmt(d.won_from_expected)} won / {fmt(d.entering_expected)} expected
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Full pivot table — all months */}
-          <div className="card mb-6 overflow-x-auto">
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-white z-10">
-                    Metric
-                  </th>
-                  {months.map((m) => (
-                    <th
-                      key={m}
-                      className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider font-mono"
-                    >
-                      {m}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody >
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
-                    Entering Expected
-                  </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      {fmt(d.entering_expected)}
-                    </td>
-                  ))}
-                </tr>
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
-                    Won from Expected
-                  </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      {fmt(d.won_from_expected)}
-                    </td>
-                  ))}
-                </tr>
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
-                    Lost from Expected
-                  </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      {fmt(d.lost_from_expected)}
-                    </td>
-                  ))}
-                </tr>
-                <tr >
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
-                    Pushed from Expected
-                  </td>
-                  {data.map((d) => (
-                    <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 font-mono tabular-nums">
-                      <div>{fmt(d.pushed_from_expected)}</div>
-                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        {fmt(d.pushed_expected_to_expected)} same · {fmt(d.pushed_expected_to_later)} later
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-                <tr className="bg-gray-50 font-semibold">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 sticky left-0 bg-gray-50">
-                    In-Month Conversion %
-                  </td>
-                  {data.map((d) => {
-                    const isGood = (d.in_month_conversion_pct ?? 0) >= 0.5;
-                    const isMid = (d.in_month_conversion_pct ?? 0) >= 0.3;
-                    return (
-                      <td key={d.month_label} className="px-4 py-3 whitespace-nowrap text-sm text-right font-mono tabular-nums font-bold">
-                        <span className={
-                          isGood
-                            ? 'text-green-600'
-                            : isMid
-                            ? 'text-amber-600'
-                            : 'text-red-600'
-                        }>
-                          {pct(d.in_month_conversion_pct)}
-                        </span>
-                      </td>
-                    );
-                  })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Conversion rate bar chart */}
-          {conversionChartData.length > 0 && (
-            <div className="card">
-              <h3 className="text-base font-semibold text-gray-900 mb-1">
-                In-Month Conversion Trend
-              </h3>
-              <p className="text-sm mb-4">
-                % Won vs Entering Expected — higher is better. Red reference line at 30%.
-              </p>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={conversionChartData} barSize={40}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 12 }}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tickFormatter={(v) => `${v}%`}
-                    tick={{ fontFamily: 'var(--font-primary-sans)', fill: '#696F7B', fontSize: 11 }}
-                  />
-                  <Tooltip
-                    formatter={(value: any) => [
-                      value != null ? `${value}%` : '—',
-                      'Conversion',
-                    ]}
-                    contentStyle={{
-                      fontFamily: 'var(--font-primary-sans)',
-                      fontSize: 12,
-                      borderRadius: 8,
-                    }}
-                  />
-                  <Bar
-                    dataKey="conversion"
-                    radius={[4, 4, 0, 0]}
-                  >
-                    {conversionChartData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={
-                          (entry.conversion ?? 0) >= 50
-                            ? SOM_CHART_COLORS.won
-                            : (entry.conversion ?? 0) >= 30
-                            ? SOM_CHART_COLORS.pushed
-                            : SOM_CHART_COLORS.lost
-                        }
-                      />
-                    ))}
-                    <LabelList
-                      dataKey="conversion"
-                      position="top"
-                      content={({ value }) => {
-                        const v = Number(value);
-                        if (Number.isNaN(v)) return null;
-                        return <text>{`${v}%`}</text>;
-                      }}
-                      style={{ fontFamily: 'var(--font-primary-sans)', fontSize: 11, fill: '#696F7B' }}
-                    />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
         </div>
       </main>
     </div>

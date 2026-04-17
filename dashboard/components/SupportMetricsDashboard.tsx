@@ -117,7 +117,7 @@ export default function SupportMetricsDashboard() {
     <div>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Summary Cards */}
-        {latest && (
+        {latest ? (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="card-glow">
               <p className="text-[11px] uppercase tracking-widest mb-2">Latest Month</p>
@@ -160,6 +160,10 @@ export default function SupportMetricsDashboard() {
               </p>
             </div>
           </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500 mb-8" role="status">
+            <p>No support metrics available for the selected period</p>
+          </div>
         )}
 
         {/* Chart 1: Ticket Volume Trend */}
@@ -170,8 +174,9 @@ export default function SupportMetricsDashboard() {
           <p className="text-sm mb-4">
             Monthly ticket creation and resolution counts. Balancing new and closed tickets indicates healthy throughput.
           </p>
-          <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={ticketVolumeData}>
+          <div role="img" aria-label="Ticket volume chart showing new vs closed tickets by period">
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={ticketVolumeData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
                 dataKey="month"
@@ -199,8 +204,9 @@ export default function SupportMetricsDashboard() {
               <Bar dataKey="New" fill="#3B7E6B" radius={[2, 2, 0, 0]} />
               <Bar dataKey="Closed" fill="#64748b" radius={[2, 2, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
-        </div>
+            </ResponsiveContainer>
+            </div>
+          </div>
 
         {/* Chart 2: CSAT Score Trend */}
         <div className="card mb-8">
@@ -210,8 +216,9 @@ export default function SupportMetricsDashboard() {
           <p className="text-sm mb-4">
             Customer satisfaction responses stacked by sentiment. Line overlay shows the positive-response percentage each month.
           </p>
-          <ResponsiveContainer width="100%" height={340}>
-            <ComposedChart data={csatData}>
+          <div role="img" aria-label="CSAT score trend chart with response count and satisfaction percentage">
+            <ResponsiveContainer width="100%" height={340}>
+              <ComposedChart data={csatData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
                 dataKey="month"
@@ -286,8 +293,9 @@ export default function SupportMetricsDashboard() {
                 connectNulls
               />
             </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+            </ResponsiveContainer>
+            </div>
+          </div>
 
         {/* Chart 3: First Response Time Trend */}
         <div className="card mb-8">
@@ -297,8 +305,9 @@ export default function SupportMetricsDashboard() {
           <p className="text-sm mb-4">
             Average and median first-response time in minutes. Lower is better / fast first responses drive higher CSAT.
           </p>
-          <ResponsiveContainer width="100%" height={320}>
-            <LineChart data={frtData}>
+          <div role="img" aria-label="First response time trend chart showing average and median response times in minutes">
+            <ResponsiveContainer width="100%" height={320}>
+              <LineChart data={frtData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" />
               <XAxis
                 dataKey="month"
@@ -355,8 +364,9 @@ export default function SupportMetricsDashboard() {
                 connectNulls
               />
             </LineChart>
-          </ResponsiveContainer>
-        </div>
+            </ResponsiveContainer>
+            </div>
+          </div>
 
         {/* Data Table */}
         <div className="card overflow-hidden">
@@ -364,31 +374,32 @@ export default function SupportMetricsDashboard() {
             Monthly Breakdown ({data.length} months)
           </h3>
           <div className="overflow-x-auto">
-            <table className="dashboard-table">
+            <table className="dashboard-table" aria-describedby="monthly-breakdown-caption">
+              <caption id="monthly-breakdown-caption" className="sr-only">Monthly breakdown of support metrics including ticket counts, CSAT scores, and first response times</caption>
               <thead className="">
                 <tr>
-                  <th className="">
+                  <th scope="col" className="">
                     Month
                   </th>
-                  <th className="" style={{ textAlign: "right" }}>
+                  <th scope="col" className="" style={{ textAlign: "right" }}>
                     New
                   </th>
-                  <th className="" style={{ textAlign: "right" }}>
+                  <th scope="col" className="" style={{ textAlign: "right" }}>
                     Closed
                   </th>
-                  <th className="" style={{ textAlign: "right" }}>
+                  <th scope="col" className="" style={{ textAlign: "right" }}>
                     CSAT +
                   </th>
-                  <th className="" style={{ textAlign: "right" }}>
+                  <th scope="col" className="" style={{ textAlign: "right" }}>
                     CSAT -
                   </th>
-                  <th className="" style={{ textAlign: "right" }}>
+                  <th scope="col" className="" style={{ textAlign: "right" }}>
                     CSAT %
                   </th>
-                  <th className="" style={{ textAlign: "right" }}>
+                  <th scope="col" className="" style={{ textAlign: "right" }}>
                     FRT Avg
                   </th>
-                  <th className="" style={{ textAlign: "right" }}>
+                  <th scope="col" className="" style={{ textAlign: "right" }}>
                     FRT Median
                   </th>
                 </tr>
